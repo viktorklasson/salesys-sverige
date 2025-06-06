@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { format } from "date-fns"
 import { sv } from 'date-fns/locale';
 import DashboardCard from './DashboardCard';
+import DashboardListCard from './DashboardListCard';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -51,8 +53,9 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'welcome' | 'dashboard'>('welcome');
+  const [currentView, setCurrentView] = useState<'welcome' | 'section' | 'dashboard'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
+  const [selectedDashboard, setSelectedDashboard] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [avtalsData, setAvtalsData] = useState<Array<{ date: string; value: number }>>([]);
   const [samtalData, setSamtalData] = useState<Array<{ date: string; value: number }>>([]);
@@ -63,6 +66,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const [dialGroupSummaries, setDialGroupSummaries] = useState<any[]>([]);
   const [loadingDialGroupSummaries, setLoadingDialGroupSummaries] = useState(true);
   const [dialGroupSummariesError, setDialGroupSummariesError] = useState<string | null>(null);
+  const [dashboards, setDashboards] = useState<any[]>([]);
+  const [loadingDashboards, setLoadingDashboards] = useState(false);
+  const [dashboardResults, setDashboardResults] = useState<any>(null);
+  const [loadingDashboardResults, setLoadingDashboardResults] = useState(false);
 
   // Helper function to get date range for a specific date
   const getDateRange = (date: Date): { from: string; to: string } => {
@@ -104,8 +111,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return result;
   };
 
-  // Load statistics data based on selected date
+  // Load statistics data based on selected date (only for welcome screen)
   useEffect(() => {
+    if (currentView !== 'welcome') return;
+
     const loadStatistics = async () => {
       if (!salesysApi.getBearerToken()) return;
 
@@ -139,11 +148,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadStatistics();
-  }, [selectedDate]);
+  }, [selectedDate, currentView]);
 
-  // Load dial groups only when navigating to the ringlistor section in dashboard view
+  // Load dashboards when navigating to welcome
   useEffect(() => {
-    if (currentView !== 'dashboard' || activeSection !== 'ringlistor') return;
+    if (currentView !== 'welcome') return;
+
+    const loadDashboards = async () => {
+      setLoadingDashboards(true);
+      try {
+        const response = await salesysApi.getDashboards();
+        setDashboards(response);
+        console.log('Loaded dashboards:', response);
+      } catch (error) {
+        console.error('Error loading dashboards:', error);
+        toast({
+          title: "Något gick fel.",
+          description: "Kunde inte ladda statistikvyer.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDashboards(false);
+      }
+    };
+
+    loadDashboards();
+  }, [currentView]);
+
+  // Load dial groups only when navigating to the ringlistor section
+  useEffect(() => {
+    if (currentView !== 'section' || activeSection !== 'ringlistor') return;
 
     const loadDialGroups = async () => {
       setLoadingDialGroups(true);
@@ -169,7 +203,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
   // Load dial group summaries only when dial groups are loaded and in ringlistor section
   useEffect(() => {
-    if (dialGroups.length === 0 || currentView !== 'dashboard' || activeSection !== 'ringlistor') return;
+    if (dialGroups.length === 0 || currentView !== 'section' || activeSection !== 'ringlistor') return;
 
     const loadDialGroupSummaries = async () => {
       setLoadingDialGroupSummaries(true);
@@ -195,6 +229,31 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     loadDialGroupSummaries();
   }, [dialGroups, currentView, activeSection]);
 
+  // Load dashboard results when a dashboard is selected
+  useEffect(() => {
+    if (!selectedDashboard || currentView !== 'dashboard') return;
+
+    const loadDashboardResults = async () => {
+      setLoadingDashboardResults(true);
+      try {
+        const results = await salesysApi.getDashboardResults(selectedDashboard.id);
+        setDashboardResults(results);
+        console.log('Loaded dashboard results:', results);
+      } catch (error) {
+        console.error('Error loading dashboard results:', error);
+        toast({
+          title: "Något gick fel.",
+          description: "Kunde inte ladda dashboard-resultat.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDashboardResults(false);
+      }
+    };
+
+    loadDashboardResults();
+  }, [selectedDashboard, currentView]);
+
   const getTotalFromHourlyData = (data: Array<{ date: string; value: number }>): number => {
     return data.reduce((sum, item) => sum + item.value, 0);
   };
@@ -203,6 +262,28 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     if (date) {
       setSelectedDate(date);
     }
+  };
+
+  const handleSectionNavigation = (section: 'ringlistor' | 'anvandare' | 'team') => {
+    setActiveSection(section);
+    setCurrentView('section');
+  };
+
+  const handleDashboardClick = (dashboard: any) => {
+    setSelectedDashboard(dashboard);
+    setCurrentView('dashboard');
+  };
+
+  const handleBackToWelcome = () => {
+    setCurrentView('welcome');
+    setSelectedDashboard(null);
+    setDashboardResults(null);
+  };
+
+  const handleBackToSection = () => {
+    setCurrentView('section');
+    setSelectedDashboard(null);
+    setDashboardResults(null);
   };
 
   if (currentView === 'welcome') {
@@ -269,124 +350,195 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             />
           </div>
 
-          {/* Button to enter dashboard */}
-          <div className="text-center">
-            <Button onClick={() => setCurrentView('dashboard')}>
-              Gå till Dashboard
+          {/* Navigation Buttons */}
+          <div className="flex items-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              onClick={() => handleSectionNavigation('anvandare')}
+            >
+              Användare
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleSectionNavigation('ringlistor')}
+            >
+              Ringlistor
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleSectionNavigation('team')}
+            >
+              Team
             </Button>
           </div>
+
+          {/* Dashboards List */}
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-light">Statistikvyer</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingDashboards ? (
+                <div className="animate-pulse space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-gray-200 h-16 rounded-lg" />
+                  ))}
+                </div>
+              ) : dashboards.length > 0 ? (
+                <div className="space-y-3">
+                  {dashboards.map((dashboard) => (
+                    <DashboardListCard
+                      key={dashboard.id}
+                      dashboard={dashboard}
+                      onClick={() => handleDashboardClick(dashboard)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">Inga statistikvyer hittades.</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
+  if (currentView === 'section') {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="bg-gray-50 py-4 border-b">
+          <div className="container mx-auto px-4 flex justify-between items-center">
+            <h1 className="text-2xl font-light text-gray-800">
+              {activeSection === 'ringlistor' ? 'Ringlistor' : 
+               activeSection === 'anvandare' ? 'Användare' : 'Team'}
+            </h1>
+            <Button variant="outline" onClick={handleBackToWelcome}>
+              Tillbaka till översikt
+            </Button>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-6">
+          {activeSection === 'ringlistor' && (
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light">Ringlistor</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingDialGroups ? (
+                  <div className="animate-pulse space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="bg-gray-200 h-4 w-32 rounded" />
+                        <div className="bg-gray-200 h-4 w-12 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : dialGroupsError ? (
+                  <div className="text-red-500">{dialGroupsError}</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">ID</TableHead>
+                          <TableHead>Namn</TableHead>
+                          <TableHead>Kontakter</TableHead>
+                          <TableHead>Reserverade</TableHead>
+                          <TableHead>Skippade</TableHead>
+                          <TableHead>Karantän</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dialGroups.map((group) => {
+                          const summary = dialGroupSummaries.find(s => s.dialGroupId === group.id)?.summary;
+                          return (
+                            <TableRow key={group.id}>
+                              <TableCell className="font-medium">{group.serialId}</TableCell>
+                              <TableCell>{group.name}</TableCell>
+                              <TableCell>{summary?.contactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.reservedContactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.skippedContactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.quarantinedContactCount ?? 'N/A'}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'anvandare' && (
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light">Användare</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-500">Här kommer en lista med användare.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'team' && (
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light">Team</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-500">Här kommer en lista med team.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Dashboard view
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-gray-50 py-4 border-b">
         <div className="container mx-auto px-4 flex justify-between items-center">
-          <h1 className="text-2xl font-light text-gray-800">Dashboard</h1>
-          <Button variant="outline" onClick={() => setCurrentView('welcome')}>
+          <h1 className="text-2xl font-light text-gray-800">
+            {selectedDashboard?.name || 'Dashboard'}
+          </h1>
+          <Button variant="outline" onClick={handleBackToWelcome}>
             Tillbaka till översikt
           </Button>
         </div>
       </div>
 
-      {/* Navigation */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant={activeSection === 'ringlistor' ? 'default' : 'outline'}
-            onClick={() => setActiveSection('ringlistor')}
-          >
-            Ringlistor
-          </Button>
-          <Button
-            variant={activeSection === 'anvandare' ? 'default' : 'outline'}
-            onClick={() => setActiveSection('anvandare')}
-          >
-            Användare
-          </Button>
-          <Button
-            variant={activeSection === 'team' ? 'default' : 'outline'}
-            onClick={() => setActiveSection('team')}
-          >
-            Team
-          </Button>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-6">
-        {activeSection === 'ringlistor' && (
+        {loadingDashboardResults ? (
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-light">Ringlistor</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingDialGroups ? (
-                <div className="animate-pulse space-y-3">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="bg-gray-200 h-4 w-32 rounded" />
-                      <div className="bg-gray-200 h-4 w-12 rounded" />
-                    </div>
-                  ))}
-                </div>
-              ) : dialGroupsError ? (
-                <div className="text-red-500">{dialGroupsError}</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[100px]">ID</TableHead>
-                        <TableHead>Namn</TableHead>
-                        <TableHead>Kontakter</TableHead>
-                        <TableHead>Reserverade</TableHead>
-                        <TableHead>Skippade</TableHead>
-                        <TableHead>Karantän</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dialGroups.map((group) => {
-                        const summary = dialGroupSummaries.find(s => s.dialGroupId === group.id)?.summary;
-                        return (
-                          <TableRow key={group.id}>
-                            <TableCell className="font-medium">{group.serialId}</TableCell>
-                            <TableCell>{group.name}</TableCell>
-                            <TableCell>{summary?.contactCount ?? 'N/A'}</TableCell>
-                            <TableCell>{summary?.reservedContactCount ?? 'N/A'}</TableCell>
-                            <TableCell>{summary?.skippedContactCount ?? 'N/A'}</TableCell>
-                            <TableCell>{summary?.quarantinedContactCount ?? 'N/A'}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+            <CardContent className="pt-6">
+              <div className="animate-pulse space-y-4">
+                <div className="bg-gray-200 h-4 w-1/4 rounded" />
+                <div className="bg-gray-200 h-80 w-full rounded" />
+              </div>
             </CardContent>
           </Card>
-        )}
-
-        {activeSection === 'anvandare' && (
+        ) : dashboardResults ? (
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
             <CardHeader>
-              <CardTitle className="text-lg font-light">Användare</CardTitle>
+              <CardTitle className="text-lg font-light">Dashboard Results</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-500">Här kommer en lista med användare.</p>
+              <pre className="text-sm bg-gray-100 p-4 rounded overflow-auto">
+                {JSON.stringify(dashboardResults, null, 2)}
+              </pre>
             </CardContent>
           </Card>
-        )}
-
-        {activeSection === 'team' && (
+        ) : (
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-light">Team</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-500">Här kommer en lista med team.</p>
+            <CardContent className="pt-6">
+              <p className="text-gray-500">Ingen data hittades för denna statistikvy.</p>
             </CardContent>
           </Card>
         )}
