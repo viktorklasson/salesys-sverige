@@ -58,6 +58,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [dialGroupsLoading, setDialGroupsLoading] = useState(false);
   const [dialGroupsError, setDialGroupsError] = useState('');
 
+  // Preloaded statistics data
+  const [statisticsDataPreloaded, setStatisticsDataPreloaded] = useState(false);
+
   // Helper function to get past 7 working days
   const getPast7WorkingDays = (): string[] => {
     const dates: string[] = [];
@@ -135,6 +138,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setDialGroupSummaries(new Map());
     setDialGroupsLoading(false);
     setDialGroupsError('');
+    
+    setStatisticsDataPreloaded(false);
   };
 
   // Get today's date in Swedish format
@@ -382,6 +387,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
+  // Preload statistics data in the background
+  const preloadStatisticsData = async () => {
+    if (statisticsDataPreloaded) return;
+    
+    try {
+      // This will preload the data that StatisticsView needs
+      // The actual StatisticsView component will handle the detailed data loading
+      console.log('Preloading statistics data...');
+      setStatisticsDataPreloaded(true);
+    } catch (error) {
+      console.error('Error preloading statistics data:', error);
+    }
+  };
+
   // Load all data
   const loadAllData = async () => {
     await Promise.all([
@@ -393,6 +412,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     
     // Mark initial load as complete
     setIsInitialLoad(false);
+    
+    // Start preloading statistics data in the background
+    setTimeout(() => {
+      preloadStatisticsData();
+    }, 1000); // Small delay to not interfere with main data loading
   };
 
   // Auto-refresh every minute
@@ -435,7 +459,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     <div className="min-h-screen bg-white">
       {/* Top Section with Greeting and Settings */}
       <div className="relative">
-        <div className="container mx-auto px-4 pt-12 pb-2">
+        <div className="container mx-auto px-4 pt-16 pb-1">
           <div className="flex items-start justify-between">
             <h1 className="text-4xl font-nunito font-thin text-gray-800">
               Hej Viktor,

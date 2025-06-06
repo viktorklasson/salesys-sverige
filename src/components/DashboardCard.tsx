@@ -148,10 +148,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   {/* Weekly Total */}
                   <div 
-                    className="p-2 rounded-lg border-2 bg-white text-white text-center"
-                    style={{ borderColor: chartColors[color], backgroundColor: chartColors[color] }}
+                    className="p-2 rounded-lg border bg-white text-center"
+                    style={{ borderColor: chartColors[color], color: chartColors[color] }}
                   >
-                    <div className="text-xs opacity-80 mb-1">Vecka</div>
+                    <div className="text-xs opacity-70 mb-1">Vecka</div>
                     <div className="text-sm font-medium">
                       {weeklyTotal !== undefined ? weeklyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
@@ -159,10 +159,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   
                   {/* Monthly Total */}
                   <div 
-                    className="p-2 rounded-lg border-2 bg-white text-white text-center"
-                    style={{ borderColor: chartColors[color], backgroundColor: chartColors[color] }}
+                    className="p-2 rounded-lg border bg-white text-center"
+                    style={{ borderColor: chartColors[color], color: chartColors[color] }}
                   >
-                    <div className="text-xs opacity-80 mb-1">Månad</div>
+                    <div className="text-xs opacity-70 mb-1">Månad</div>
                     <div className="text-sm font-medium">
                       {monthlyTotal !== undefined ? monthlyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
@@ -170,7 +170,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   
                   {/* Navigation */}
                   <div 
-                    className="p-2 rounded-lg border-2 bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                    className="p-2 rounded-lg border bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
                     style={{ borderColor: chartColors[color] }}
                     onClick={(e) => {
                       e.stopPropagation();
