@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -142,9 +141,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     loadStatistics();
   }, [selectedDate]);
 
-  // Load dial groups only when in dashboard view
+  // Load dial groups only when navigating to the ringlistor section in dashboard view
   useEffect(() => {
-    if (currentView !== 'dashboard') return;
+    if (currentView !== 'dashboard' || activeSection !== 'ringlistor') return;
 
     const loadDialGroups = async () => {
       setLoadingDialGroups(true);
@@ -166,11 +165,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadDialGroups();
-  }, [currentView]);
+  }, [currentView, activeSection]);
 
-  // Load dial group summaries
+  // Load dial group summaries only when dial groups are loaded and in ringlistor section
   useEffect(() => {
-    if (dialGroups.length === 0 || currentView !== 'dashboard') return;
+    if (dialGroups.length === 0 || currentView !== 'dashboard' || activeSection !== 'ringlistor') return;
 
     const loadDialGroupSummaries = async () => {
       setLoadingDialGroupSummaries(true);
@@ -194,7 +193,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadDialGroupSummaries();
-  }, [dialGroups, currentView]);
+  }, [dialGroups, currentView, activeSection]);
 
   const getTotalFromHourlyData = (data: Array<{ date: string; value: number }>): number => {
     return data.reduce((sum, item) => sum + item.value, 0);
@@ -318,34 +317,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       </div>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Section Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <DashboardCard
-            title="Avtal signerade"
-            count={getTotalFromHourlyData(avtalsData)}
-            isLoading={!avtalsData.length}
-            color="green"
-            chartData={avtalsData}
-            onClick={() => onStatisticsClick('avtal')}
-          />
-          <DashboardCard
-            title="Samtal genomförda"
-            count={getTotalFromHourlyData(samtalData)}
-            isLoading={!samtalData.length}
-            color="blue"
-            chartData={samtalData}
-            onClick={() => onStatisticsClick('samtal')}
-          />
-          <DashboardCard
-            title="Ordrar skapade"
-            count={getTotalFromHourlyData(ordrarData)}
-            isLoading={!ordrarData.length}
-            color="purple"
-            chartData={ordrarData}
-            onClick={() => onStatisticsClick('ordrar')}
-          />
-        </div>
-
         {activeSection === 'ringlistor' && (
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
             <CardHeader>
