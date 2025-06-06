@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -243,8 +242,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
-        <div className="container mx-auto">
+      <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
+        <div className="container mx-auto px-1 sm:px-6">
           <div className="animate-pulse space-y-4 sm:space-y-6">
             <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/2 sm:w-1/4"></div>
             <div className="h-48 sm:h-64 bg-gray-200 rounded"></div>
@@ -257,8 +256,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
-        <div className="container mx-auto">
+      <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
+        <div className="container mx-auto px-1 sm:px-6">
           <Button onClick={onBack} variant="ghost" className="mb-4 sm:mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Tillbaka
@@ -274,10 +273,10 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-6">
-      <div className="container mx-auto space-y-4 sm:space-y-6 max-w-full">
+    <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
+      <div className="container mx-auto space-y-4 sm:space-y-6 max-w-full px-1 sm:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-2 sm:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button onClick={onBack} variant="ghost" className="self-start">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -289,7 +288,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         </div>
 
         {/* Chart */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl mx-2 sm:mx-0">
+        <Card className="bg-white border-0 shadow-sm rounded-2xl">
           <CardHeader className="pb-4">
             <CardTitle className="text-base sm:text-lg font-light text-gray-700">
               Trendanalys - Topp användare
@@ -337,7 +336,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         </Card>
 
         {/* User Stats Table */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl mx-2 sm:mx-0">
+        <Card className="bg-white border-0 shadow-sm rounded-2xl">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-base sm:text-lg font-light text-gray-700 flex items-center gap-2">
