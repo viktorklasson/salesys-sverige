@@ -12,10 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CalendarDateRangePicker } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from '@/lib/utils';
-import { DateRange, format } from "date-fns"
+import { format } from "date-fns"
 import { sv } from 'date-fns/locale';
 import DashboardCard from './DashboardCard';
 import { Separator } from '@/components/ui/separator';

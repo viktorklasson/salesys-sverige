@@ -25,6 +25,11 @@ const Index = () => {
     setIsAuthenticated(false);
   };
 
+  const handleStatisticsClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
+    console.log('Statistics clicked:', statType);
+    // TODO: Navigate to statistics view or handle statistics display
+  };
+
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -40,7 +45,7 @@ const Index = () => {
     return <AuthForm onAuthenticated={handleAuthenticated} />;
   }
 
-  return <Dashboard onLogout={handleLogout} />;
+  return <Dashboard onStatisticsClick={handleStatisticsClick} />;
 };
 
 export default Index;
