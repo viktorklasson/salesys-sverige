@@ -1,741 +1,345 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut, Users, UserCheck, Phone } from 'lucide-react';
-import { salesysApi, DialGroup, DialGroupSummary, type Dashboard } from '@/services/salesysApi';
-import DashboardCard from './DashboardCard';
-import DialGroupCard from './DialGroupCard';
-import StatisticsView from './StatisticsView';
-import DashboardListCard from './DashboardListCard';
-import DashboardDetailView from './DashboardDetailView';
+import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle } from 'lucide-react';
+import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { CalendarDateRangePicker } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from '@/lib/utils';
+import { DateRange, format } from "date-fns"
+import { sv } from 'date-fns/locale';
+import DashboardCard from './DashboardCard';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 interface DashboardProps {
-  onLogout: () => void;
+  onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
 }
 
-type MainView = 'dashboard' | 'statistics' | 'dashboard-detail';
-type SectionView = 'användare' | 'team' | 'ringlistor';
-
-const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
-  
-  // View state
-  const [currentView, setCurrentView] = useState<MainView>('dashboard');
-  const [currentSection, setCurrentSection] = useState<SectionView>('användare');
-  const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar'>('avtal');
-  const [selectedDashboard, setSelectedDashboard] = useState<Dashboard | null>(null);
-  
-  // Track if this is the initial load
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
-  // Today's stats state
-  const [avtalCount, setAvtalCount] = useState(0);
-  const [avtalLoading, setAvtalLoading] = useState(false);
-  const [avtalError, setAvtalError] = useState('');
-  const [avtalChartData, setAvtalChartData] = useState<Array<{ date: string; value: number }>>([]);
-  const [avtalWeeklyTotal, setAvtalWeeklyTotal] = useState<number>(0);
-  const [avtalMonthlyTotal, setAvtalMonthlyTotal] = useState<number>(0);
+  const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
+  const [avtalsData, setAvtalsData] = useState<Array<{ date: string; value: number }>>([]);
+  const [samtalData, setSamtalData] = useState<Array<{ date: string; value: number }>>([]);
+  const [ordrarData, setOrdrarData] = useState<Array<{ date: string; value: number }>>([]);
+  const [dialGroups, setDialGroups] = useState<any[]>([]);
+  const [loadingDialGroups, setLoadingDialGroups] = useState(true);
+  const [dialGroupsError, setDialGroupsError] = useState<string | null>(null);
+  const [dialGroupSummaries, setDialGroupSummaries] = useState<any[]>([]);
+  const [loadingDialGroupSummaries, setLoadingDialGroupSummaries] = useState(true);
+  const [dialGroupSummariesError, setDialGroupSummariesError] = useState<string | null>(null);
 
-  const [samtalCount, setSamtalCount] = useState(0);
-  const [samtalLoading, setSamtalLoading] = useState(false);
-  const [samtalError, setSamtalError] = useState('');
-  const [samtalChartData, setSamtalChartData] = useState<Array<{ date: string; value: number }>>([]);
-  const [samtalWeeklyTotal, setSamtalWeeklyTotal] = useState<number>(0);
-  const [samtalMonthlyTotal, setSamtalMonthlyTotal] = useState<number>(0);
+  // Helper function to get today's date range in Stockholm timezone
+  const getTodayStockholmRange = (): { from: string; to: string } => {
+    const now = new Date();
+    const stockholmTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
+    
+    const today = new Date(stockholmTime);
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
 
-  const [ordrarCount, setOrdrarCount] = useState(0);
-  const [ordrarLoading, setOrdrarLoading] = useState(false);
-  const [ordrarError, setOrdrarError] = useState('');
-  const [ordrarChartData, setOrdrarChartData] = useState<Array<{ date: string; value: number }>>([]);
-  const [ordrarWeeklyTotal, setOrdrarWeeklyTotal] = useState<number>(0);
-  const [ordrarMonthlyTotal, setOrdrarMonthlyTotal] = useState<number>(0);
-
-  // Dashboards state
-  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
-  const [dashboardsLoading, setDashboardsLoading] = useState(false);
-  const [dashboardsError, setDashboardsError] = useState('');
-
-  // Dial groups state
-  const [dialGroups, setDialGroups] = useState<DialGroup[]>([]);
-  const [dialGroupSummaries, setDialGroupSummaries] = useState<Map<string, DialGroupSummary>>(new Map());
-  const [dialGroupsLoading, setDialGroupsLoading] = useState(false);
-  const [dialGroupsError, setDialGroupsError] = useState('');
-
-  // Preloaded statistics data
-  const [statisticsDataPreloaded, setStatisticsDataPreloaded] = useState(false);
-
-  // Helper function to get past 7 working days
-  const getPast7WorkingDays = (): string[] => {
-    const dates: string[] = [];
-    const today = new Date();
-    let currentDate = new Date(today);
-    let workingDaysCount = 0;
-
-    while (workingDaysCount < 7) {
-      const dayOfWeek = currentDate.getDay();
-      // Skip weekends (0 = Sunday, 6 = Saturday)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        dates.unshift(currentDate.toISOString().split('T')[0]);
-        workingDaysCount++;
-      }
-      currentDate.setDate(currentDate.getDate() - 1);
-    }
-
-    return dates;
+    return {
+      from: today.toISOString().split('T')[0], // YYYY-MM-DD format
+      to: tomorrow.toISOString().split('T')[0]  // YYYY-MM-DD format
+    };
   };
 
-  // Helper function to get current week dates
-  const getCurrentWeekDates = (): { start: Date; end: Date } => {
-    const today = new Date();
-    const currentDay = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-    monday.setHours(0, 0, 0, 0);
+  // Helper function to aggregate hourly data and convert to Stockholm time
+  const aggregateHourlyData = (data: any[]): Array<{ date: string; value: number }> => {
+    const hourlyMap = new Map<string, number>();
     
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    
-    return { start: monday, end: sunday };
-  };
-
-  // Helper function to get current month dates
-  const getCurrentMonthDates = (): { start: Date; end: Date } => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    start.setHours(0, 0, 0, 0);
-    
-    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    end.setHours(23, 59, 59, 999);
-    
-    return { start, end };
-  };
-
-  // Reset all state to initial values
-  const resetAllState = () => {
-    setCurrentView('dashboard');
-    setSelectedStatType('avtal');
-    setSelectedDashboard(null);
-    
-    setAvtalCount(0);
-    setAvtalLoading(false);
-    setAvtalError('');
-    setAvtalChartData([]);
-    setAvtalWeeklyTotal(0);
-    setAvtalMonthlyTotal(0);
-    
-    setSamtalCount(0);
-    setSamtalLoading(false);
-    setSamtalError('');
-    setSamtalChartData([]);
-    setSamtalWeeklyTotal(0);
-    setSamtalMonthlyTotal(0);
-    
-    setOrdrarCount(0);
-    setOrdrarLoading(false);
-    setOrdrarError('');
-    setOrdrarChartData([]);
-    setOrdrarWeeklyTotal(0);
-    setOrdrarMonthlyTotal(0);
-    
-    setDialGroups([]);
-    setDialGroupSummaries(new Map());
-    setDialGroupsLoading(false);
-    setDialGroupsError('');
-    
-    setDashboards([]);
-    setDashboardsLoading(false);
-    setDashboardsError('');
-    
-    setStatisticsDataPreloaded(false);
-  };
-
-  // Get today's date in Swedish format
-  const getTodayDateString = (): string => {
-    const today = new Date();
-    return today.toLocaleDateString('sv-SE', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'Europe/Stockholm'
+    data.forEach(item => {
+      // Convert UTC time to Stockholm time for display
+      const utcDate = new Date(item.intervalStart);
+      const stockholmDate = new Date(utcDate.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
+      const hour = stockholmDate.getHours();
+      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+      
+      const currentCount = hourlyMap.get(hourKey) || 0;
+      hourlyMap.set(hourKey, currentCount + item.count);
     });
+
+    // Create array for all 24 hours
+    const result = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+      result.push({
+        date: hourKey,
+        value: hourlyMap.get(hourKey) || 0
+      });
+    }
+    
+    return result;
   };
 
-  // Load Avtal (signed contracts) with 7-day trend
-  const loadAvtal = async () => {
-    // Only show loading on initial load
-    if (isInitialLoad) {
-      setAvtalLoading(true);
-    }
-    setAvtalError('');
-    
-    try {
-      // Get today's count
-      const count = await salesysApi.getOffersCount({ 
-        statuses: ['signed'] 
-      });
-      setAvtalCount(count);
-
-      // Get 7-day trend data
-      const workingDays = getPast7WorkingDays();
-      const chartDataPromises = workingDays.map(async (date) => {
-        const dayStart = new Date(date + 'T00:00:00.000+01:00');
-        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
-        
-        try {
-          const dayCount = await salesysApi.getOffersCount({
-            statuses: ['signed'],
-            from: dayStart.toISOString(),
-            to: dayEnd.toISOString()
-          });
-          return { date, value: dayCount };
-        } catch (error) {
-          return { date, value: 0 };
-        }
-      });
-
-      const chartData = await Promise.all(chartDataPromises);
-      setAvtalChartData(chartData);
-
-      // Get weekly total
-      const weekDates = getCurrentWeekDates();
-      const weeklyCount = await salesysApi.getOffersCount({
-        statuses: ['signed'],
-        from: weekDates.start.toISOString(),
-        to: weekDates.end.toISOString()
-      });
-      setAvtalWeeklyTotal(weeklyCount);
-
-      // Get monthly total
-      const monthDates = getCurrentMonthDates();
-      const monthlyCount = await salesysApi.getOffersCount({
-        statuses: ['signed'],
-        from: monthDates.start.toISOString(),
-        to: monthDates.end.toISOString()
-      });
-      setAvtalMonthlyTotal(monthlyCount);
-      
-      console.log('Loaded avtal count:', count);
-    } catch (error) {
-      const errorMsg = 'Kunde inte ladda avtalsdata';
-      setAvtalError(errorMsg);
-      console.error('Error loading avtal:', error);
-    } finally {
-      if (isInitialLoad) {
-        setAvtalLoading(false);
-      }
-    }
-  };
-
-  // Load Samtal (calls) with 7-day trend
-  const loadSamtal = async () => {
-    // Only show loading on initial load
-    if (isInitialLoad) {
-      setSamtalLoading(true);
-    }
-    setSamtalError('');
-    
-    try {
-      // Get today's count
-      const response = await salesysApi.getCalls({
-        count: 1 // We only need the count
-      });
-      setSamtalCount(response.total);
-
-      // Get 7-day trend data
-      const workingDays = getPast7WorkingDays();
-      const chartDataPromises = workingDays.map(async (date) => {
-        const dayStart = new Date(date + 'T00:00:00.000+01:00');
-        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
-        
-        try {
-          const dayResponse = await salesysApi.getCalls({
-            count: 1,
-            after: dayStart.toISOString(),
-            before: dayEnd.toISOString()
-          });
-          return { date, value: dayResponse.total };
-        } catch (error) {
-          return { date, value: 0 };
-        }
-      });
-
-      const chartData = await Promise.all(chartDataPromises);
-      setSamtalChartData(chartData);
-
-      // Get weekly total
-      const weekDates = getCurrentWeekDates();
-      const weeklyResponse = await salesysApi.getCalls({
-        count: 1,
-        after: weekDates.start.toISOString(),
-        before: weekDates.end.toISOString()
-      });
-      setSamtalWeeklyTotal(weeklyResponse.total);
-
-      // Get monthly total
-      const monthDates = getCurrentMonthDates();
-      const monthlyResponse = await salesysApi.getCalls({
-        count: 1,
-        after: monthDates.start.toISOString(),
-        before: monthDates.end.toISOString()
-      });
-      setSamtalMonthlyTotal(monthlyResponse.total);
-
-      console.log('Loaded samtal count:', response.total);
-    } catch (error) {
-      const errorMsg = 'Kunde inte ladda samtalsdata';
-      setSamtalError(errorMsg);
-      console.error('Error loading samtal:', error);
-    } finally {
-      if (isInitialLoad) {
-        setSamtalLoading(false);
-      }
-    }
-  };
-
-  // Load Ordrar (orders) with 7-day trend
-  const loadOrdrar = async () => {
-    // Only show loading on initial load
-    if (isInitialLoad) {
-      setOrdrarLoading(true);
-    }
-    setOrdrarError('');
-    
-    try {
-      // Get today's count
-      const response = await salesysApi.getOrders({
-        count: 1 // We only need the count
-      });
-      setOrdrarCount(response.total);
-
-      // Get 7-day trend data
-      const workingDays = getPast7WorkingDays();
-      const chartDataPromises = workingDays.map(async (date) => {
-        const dayStart = new Date(date + 'T00:00:00.000+01:00');
-        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
-        
-        try {
-          const dayResponse = await salesysApi.getOrders({
-            count: 1,
-            from: dayStart.toISOString(),
-            to: dayEnd.toISOString()
-          });
-          return { date, value: dayResponse.total };
-        } catch (error) {
-          return { date, value: 0 };
-        }
-      });
-
-      const chartData = await Promise.all(chartDataPromises);
-      setOrdrarChartData(chartData);
-
-      // Get weekly total
-      const weekDates = getCurrentWeekDates();
-      const weeklyResponse = await salesysApi.getOrders({
-        count: 1,
-        from: weekDates.start.toISOString(),
-        to: weekDates.end.toISOString()
-      });
-      setOrdrarWeeklyTotal(weeklyResponse.total);
-
-      // Get monthly total
-      const monthDates = getCurrentMonthDates();
-      const monthlyResponse = await salesysApi.getOrders({
-        count: 1,
-        from: monthDates.start.toISOString(),
-        to: monthDates.end.toISOString()
-      });
-      setOrdrarMonthlyTotal(monthlyResponse.total);
-
-      console.log('Loaded ordrar count:', response.total);
-    } catch (error) {
-      const errorMsg = 'Kunde inte ladda orderdata';
-      setOrdrarError(errorMsg);
-      console.error('Error loading ordrar:', error);
-    } finally {
-      if (isInitialLoad) {
-        setOrdrarLoading(false);
-      }
-    }
-  };
-
-  // Load Dial Groups
-  const loadDialGroups = async () => {
-    // Only show loading on initial load
-    if (isInitialLoad) {
-      setDialGroupsLoading(true);
-    }
-    setDialGroupsError('');
-    
-    try {
-      const response = await salesysApi.getDialGroups({ count: 20 });
-      setDialGroups(response.data);
-      
-      // Load summaries for each dial group
-      if (response.data.length > 0) {
-        const groupIds = response.data.map(group => group.id);
-        const summaries = await salesysApi.getDialGroupSummaries(groupIds);
-        
-        const summaryMap = new Map<string, DialGroupSummary>();
-        summaries.forEach(summary => {
-          summaryMap.set(summary.dialGroupId, summary);
-        });
-        setDialGroupSummaries(summaryMap);
-      }
-      
-      console.log('Loaded dial groups:', response.data.length);
-    } catch (error) {
-      const errorMsg = 'Kunde inte ladda ringgrupper';
-      setDialGroupsError(errorMsg);
-      console.error('Error loading dial groups:', error);
-    } finally {
-      if (isInitialLoad) {
-        setDialGroupsLoading(false);
-      }
-    }
-  };
-
-  // Load Dashboards
-  const loadDashboards = async () => {
-    // Only show loading on initial load
-    if (isInitialLoad) {
-      setDashboardsLoading(true);
-    }
-    setDashboardsError('');
-    
-    try {
-      const data = await salesysApi.getDashboards();
-      setDashboards(data.filter(d => !d.isRemoved));
-      console.log('Loaded dashboards:', data.length);
-    } catch (error) {
-      const errorMsg = 'Kunde inte ladda dashboards';
-      setDashboardsError(errorMsg);
-      console.error('Error loading dashboards:', error);
-    } finally {
-      if (isInitialLoad) {
-        setDashboardsLoading(false);
-      }
-    }
-  };
-
-  // Preload statistics data in the background
-  const preloadStatisticsData = async () => {
-    if (statisticsDataPreloaded) return;
-    
-    try {
-      // This will preload the data that StatisticsView needs
-      // The actual StatisticsView component will handle the detailed data loading
-      console.log('Preloading statistics data...');
-      setStatisticsDataPreloaded(true);
-    } catch (error) {
-      console.error('Error preloading statistics data:', error);
-    }
-  };
-
-  // Load all data
-  const loadAllData = async () => {
-    await Promise.all([
-      loadAvtal(),
-      loadSamtal(),
-      loadOrdrar(),
-      loadDialGroups(),
-      loadDashboards()
-    ]);
-    
-    // Mark initial load as complete
-    setIsInitialLoad(false);
-    
-    // Start preloading statistics data in the background
-    setTimeout(() => {
-      preloadStatisticsData();
-    }, 1000); // Small delay to not interfere with main data loading
-  };
-
-  // Auto-refresh every minute
+  // Load statistics data
   useEffect(() => {
-    loadAllData();
-    
-    const interval = setInterval(() => {
-      loadAllData();
-    }, 60000); // 60 seconds
+    const loadStatistics = async () => {
+      if (!salesysApi.getBearerToken()) return;
 
-    return () => clearInterval(interval);
+      console.log('Preloading statistics data...');
+      const { from, to } = getTodayStockholmRange();
+
+      try {
+        // Load hourly statistics for today
+        const [offerStats, callStats, orderStats] = await Promise.all([
+          salesysApi.getOfferStatistics({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getCallStatisticsHourly({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getOrderStatisticsHourly({ from, to, fixedIntervalType: 'hour' })
+        ]);
+
+        // Aggregate and convert data
+        const avtalsData = aggregateHourlyData(offerStats);
+        const samtalData = aggregateHourlyData(callStats);
+        const ordrarData = aggregateHourlyData(orderStats);
+
+        setAvtalsData(avtalsData);
+        setSamtalData(samtalData);
+        setOrdrarData(ordrarData);
+
+        console.log('Loaded hourly statistics:', { 
+          avtal: avtalsData, 
+          samtal: samtalData, 
+          ordrar: ordrarData 
+        });
+
+      } catch (error) {
+        console.error('Error loading statistics:', error);
+      }
+    };
+
+    loadStatistics();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('salesys_bearer_token');
-    salesysApi.setBearerToken(''); // Clear the cached token in the service
-    resetAllState(); // Reset all component state
-    onLogout();
+  // Load dial groups
+  useEffect(() => {
+    const loadDialGroups = async () => {
+      setLoadingDialGroups(true);
+      setDialGroupsError(null);
+      try {
+        const response = await salesysApi.getDialGroups();
+        setDialGroups(response.data);
+      } catch (error) {
+        console.error('Error loading dial groups:', error);
+        setDialGroupsError('Kunde inte ladda ringlistor.');
+        toast({
+          title: "Något gick fel.",
+          description: "Kunde inte ladda ringlistor.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoadingDialGroups(false);
+      }
+    };
+
+    loadDialGroups();
+  }, []);
+
+  // Load dial group summaries
+  useEffect(() => {
+    const loadDialGroupSummaries = async () => {
+      if (dialGroups.length === 0) return;
+
+      setLoadingDialGroupSummaries(true);
+      setDialGroupSummariesError(null);
+
+      try {
+        const dialGroupIds = dialGroups.map(group => group.id);
+        const summaries = await salesysApi.getDialGroupSummaries(dialGroupIds);
+        setDialGroupSummaries(summaries);
+      } catch (error) {
+        console.error('Error loading dial group summaries:', error);
+        setDialGroupSummariesError('Kunde inte ladda ringlistesammanfattningar.');
+        toast({
+          title: "Något gick fel.",
+          description: "Kunde inte ladda ringlistesammanfattningar.",
+          variant: "destructive",
+        })
+      } finally {
+        setLoadingDialGroupSummaries(false);
+      }
+    };
+
+    loadDialGroupSummaries();
+  }, [dialGroups]);
+
+  const getTotalFromHourlyData = (data: Array<{ date: string; value: number }>): number => {
+    return data.reduce((sum, item) => sum + item.value, 0);
   };
-
-  const handleCardClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
-    setSelectedStatType(statType);
-    setCurrentView('statistics');
-  };
-
-  const handleBackToDashboard = () => {
-    setCurrentView('dashboard');
-    setSelectedDashboard(null);
-  };
-
-  const handleDashboardClick = (dashboard: Dashboard) => {
-    setSelectedDashboard(dashboard);
-    setCurrentView('dashboard-detail');
-  };
-
-  const handleSectionChange = (section: SectionView) => {
-    setCurrentSection(section);
-  };
-
-  if (currentView === 'statistics') {
-    return (
-      <StatisticsView 
-        statType={selectedStatType} 
-        onBack={handleBackToDashboard} 
-      />
-    );
-  }
-
-  if (currentView === 'dashboard-detail' && selectedDashboard) {
-    return (
-      <DashboardDetailView 
-        dashboard={selectedDashboard} 
-        onBack={handleBackToDashboard} 
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Top Section with Greeting and Settings */}
-      <div className="relative">
-        <div className="container mx-auto px-4 pt-16 pb-1">
-          <div className="flex items-start justify-between">
-            <h1 className="text-4xl font-nunito font-thin text-gray-800">
-              Hej Viktor,
-            </h1>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logga ut
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      {/* Header */}
+      <div className="bg-gray-50 py-4 border-b">
+        <div className="container mx-auto px-4">
+          <h1 className="text-2xl font-light text-gray-800">Dashboard</h1>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-8">
-        {/* Today's Dashboard Cards */}
-        <section>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <DashboardCard
-              title="Avtal signerade"
-              count={avtalCount}
-              isLoading={avtalLoading}
-              error={avtalError}
-              color="green"
-              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => handleCardClick('avtal')}
-              chartData={avtalChartData}
-              weeklyTotal={avtalWeeklyTotal}
-              monthlyTotal={avtalMonthlyTotal}
-            />
-            
-            <DashboardCard
-              title="Samtal genomförda"
-              count={samtalCount}
-              isLoading={samtalLoading}
-              error={samtalError}
-              color="blue"
-              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => handleCardClick('samtal')}
-              chartData={samtalChartData}
-              weeklyTotal={samtalWeeklyTotal}
-              monthlyTotal={samtalMonthlyTotal}
-            />
-            
-            <DashboardCard
-              title="Ordrar skapade"
-              count={ordrarCount}
-              isLoading={ordrarLoading}
-              error={ordrarError}
-              color="purple"
-              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => handleCardClick('ordrar')}
-              chartData={ordrarChartData}
-              weeklyTotal={ordrarWeeklyTotal}
-              monthlyTotal={ordrarMonthlyTotal}
-            />
-          </div>
-        </section>
+      {/* Navigation */}
+      <div className="container mx-auto px-4 py-4">
+        <div className="flex items-center gap-4">
+          <Button
+            variant={activeSection === 'ringlistor' ? 'default' : 'outline'}
+            onClick={() => setActiveSection('ringlistor')}
+          >
+            Ringlistor
+          </Button>
+          <Button
+            variant={activeSection === 'anvandare' ? 'default' : 'outline'}
+            onClick={() => setActiveSection('anvandare')}
+          >
+            Användare
+          </Button>
+          <Button
+            variant={activeSection === 'team' ? 'default' : 'outline'}
+            onClick={() => setActiveSection('team')}
+          >
+            Team
+          </Button>
+        </div>
+      </div>
 
-        {/* Available Dashboards Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-light text-gray-700">Tillgängliga Dashboards</h2>
-            <Badge variant="outline" className="text-xs">
-              {dashboards.length} dashboard{dashboards.length !== 1 ? 's' : ''}
-            </Badge>
-          </div>
-          
-          {dashboardsError && (
-            <Card className="border-red-100 bg-red-50 rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="text-sm text-red-600">{dashboardsError}</div>
-              </CardContent>
-            </Card>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dashboardsLoading ? (
-              // Loading skeletons
-              Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
-                  <CardContent className="pt-6 space-y-3">
-                    <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
-                    <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
-                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              dashboards.map((dashboard) => (
-                <DashboardListCard
-                  key={dashboard.id}
-                  dashboard={dashboard}
-                  onClick={() => handleDashboardClick(dashboard)}
-                />
-              ))
-            )}
-          </div>
-          
-          {!dashboardsLoading && dashboards.length === 0 && !dashboardsError && (
-            <Card className="bg-white rounded-2xl border-0 shadow-sm">
-              <CardContent className="pt-6 text-center text-gray-500">
-                Inga dashboards hittades
-              </CardContent>
-            </Card>
-          )}
-        </section>
+      <div className="container mx-auto px-4 py-6">
+        {/* Section Buttons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <DashboardCard
+            title="Avtal signerade"
+            count={getTotalFromHourlyData(avtalsData)}
+            isLoading={!avtalsData.length}
+            color="green"
+            chartData={avtalsData}
+            onClick={() => onStatisticsClick('avtal')}
+          />
+          <DashboardCard
+            title="Samtal genomförda"
+            count={getTotalFromHourlyData(samtalData)}
+            isLoading={!samtalData.length}
+            color="blue"
+            chartData={samtalData}
+            onClick={() => onStatisticsClick('samtal')}
+          />
+          <DashboardCard
+            title="Ordrar skapade"
+            count={getTotalFromHourlyData(ordrarData)}
+            isLoading={!ordrarData.length}
+            color="purple"
+            chartData={ordrarData}
+            onClick={() => onStatisticsClick('ordrar')}
+          />
+        </div>
 
-        {/* Navigation Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-light text-gray-700">Organisationsvy</h2>
-          </div>
-          
-          {/* Navigation Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <Button
-              variant={currentSection === 'användare' ? 'default' : 'outline'}
-              onClick={() => handleSectionChange('användare')}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              Användare
-            </Button>
-            <Button
-              variant={currentSection === 'team' ? 'default' : 'outline'}
-              onClick={() => handleSectionChange('team')}
-              className="flex items-center gap-2"
-            >
-              <UserCheck className="h-4 w-4" />
-              Team
-            </Button>
-            <Button
-              variant={currentSection === 'ringlistor' ? 'default' : 'outline'}
-              onClick={() => handleSectionChange('ringlistor')}
-              className="flex items-center gap-2"
-            >
-              <Phone className="h-4 w-4" />
-              Ringlistor
-            </Button>
-          </div>
-
-          {/* Content based on selected section */}
-          {currentSection === 'ringlistor' && (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-md font-light text-gray-600">Ringgrupper</h3>
-                <Badge variant="outline" className="text-xs">
-                  {dialGroups.length} grupper
-                </Badge>
-              </div>
-              
-              {dialGroupsError && (
-                <Card className="border-red-100 bg-red-50 rounded-2xl">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-red-600">{dialGroupsError}</div>
-                  </CardContent>
-                </Card>
-              )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {dialGroupsLoading ? (
-                  // Loading skeletons
-                  Array.from({ length: 6 }).map((_, index) => (
-                    <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
-                      <CardContent className="pt-6 space-y-3">
-                        <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
-                        <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
-                        <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
-                        <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
-                      </CardContent>
-                    </Card>
-                  ))
+        {activeSection === 'ringlistor' && (
+          <>
+            {/* Dashboard Stats Cards */}
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light">Ringlistor</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingDialGroups ? (
+                  <div className="animate-pulse space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="bg-gray-200 h-4 w-32 rounded" />
+                        <div className="bg-gray-200 h-4 w-12 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : dialGroupsError ? (
+                  <div className="text-red-500">{dialGroupsError}</div>
                 ) : (
-                  dialGroups.map((group) => (
-                    <DialGroupCard
-                      key={group.id}
-                      dialGroup={group}
-                      summary={dialGroupSummaries.get(group.id)}
-                    />
-                  ))
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">ID</TableHead>
+                          <TableHead>Namn</TableHead>
+                          <TableHead>Kontakter</TableHead>
+                          <TableHead>Reserverade</TableHead>
+                          <TableHead>Skippade</TableHead>
+                          <TableHead>Karantän</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dialGroups.map((group) => {
+                          const summary = dialGroupSummaries.find(s => s.dialGroupId === group.id)?.summary;
+                          return (
+                            <TableRow key={group.id}>
+                              <TableCell className="font-medium">{group.serialId}</TableCell>
+                              <TableCell>{group.name}</TableCell>
+                              <TableCell>{summary?.contactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.reservedContactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.skippedContactCount ?? 'N/A'}</TableCell>
+                              <TableCell>{summary?.quarantinedContactCount ?? 'N/A'}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </div>
-              
-              {!dialGroupsLoading && dialGroups.length === 0 && !dialGroupsError && (
-                <Card className="bg-white rounded-2xl border-0 shadow-sm">
-                  <CardContent className="pt-6 text-center text-gray-500">
-                    Inga ringgrupper hittades
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          )}
-
-          {currentSection === 'användare' && (
-            <Card className="bg-white rounded-2xl border-0 shadow-sm">
-              <CardContent className="pt-6 text-center text-gray-500">
-                Användarvy kommer snart
               </CardContent>
             </Card>
-          )}
+          </>
+        )}
 
-          {currentSection === 'team' && (
-            <Card className="bg-white rounded-2xl border-0 shadow-sm">
-              <CardContent className="pt-6 text-center text-gray-500">
-                Teamvy kommer snart
-              </CardContent>
-            </Card>
-          )}
-        </section>
+        {activeSection === 'anvandare' && (
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-light">Användare</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Här kommer en lista med användare.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {activeSection === 'team' && (
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-light">Team</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Här kommer en lista med team.</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
