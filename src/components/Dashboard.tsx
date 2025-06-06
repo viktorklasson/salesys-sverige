@@ -31,16 +31,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [avtalLoading, setAvtalLoading] = useState(false);
   const [avtalError, setAvtalError] = useState('');
   const [avtalChartData, setAvtalChartData] = useState<Array<{ date: string; value: number }>>([]);
+  const [avtalWeeklyTotal, setAvtalWeeklyTotal] = useState<number>(0);
+  const [avtalMonthlyTotal, setAvtalMonthlyTotal] = useState<number>(0);
 
   const [samtalCount, setSamtalCount] = useState(0);
   const [samtalLoading, setSamtalLoading] = useState(false);
   const [samtalError, setSamtalError] = useState('');
   const [samtalChartData, setSamtalChartData] = useState<Array<{ date: string; value: number }>>([]);
+  const [samtalWeeklyTotal, setSamtalWeeklyTotal] = useState<number>(0);
+  const [samtalMonthlyTotal, setSamtalMonthlyTotal] = useState<number>(0);
 
   const [ordrarCount, setOrdrarCount] = useState(0);
   const [ordrarLoading, setOrdrarLoading] = useState(false);
   const [ordrarError, setOrdrarError] = useState('');
   const [ordrarChartData, setOrdrarChartData] = useState<Array<{ date: string; value: number }>>([]);
+  const [ordrarWeeklyTotal, setOrdrarWeeklyTotal] = useState<number>(0);
+  const [ordrarMonthlyTotal, setOrdrarMonthlyTotal] = useState<number>(0);
 
   // Dial groups state
   const [dialGroups, setDialGroups] = useState<DialGroup[]>([]);
@@ -68,6 +74,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     return dates;
   };
 
+  // Helper function to get current week dates
+  const getCurrentWeekDates = (): { start: Date; end: Date } => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    monday.setHours(0, 0, 0, 0);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    return { start: monday, end: sunday };
+  };
+
+  // Helper function to get current month dates
+  const getCurrentMonthDates = (): { start: Date; end: Date } => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  };
+
   // Reset all state to initial values
   const resetAllState = () => {
     setCurrentView('dashboard');
@@ -77,16 +110,22 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setAvtalLoading(false);
     setAvtalError('');
     setAvtalChartData([]);
+    setAvtalWeeklyTotal(0);
+    setAvtalMonthlyTotal(0);
     
     setSamtalCount(0);
     setSamtalLoading(false);
     setSamtalError('');
     setSamtalChartData([]);
+    setSamtalWeeklyTotal(0);
+    setSamtalMonthlyTotal(0);
     
     setOrdrarCount(0);
     setOrdrarLoading(false);
     setOrdrarError('');
     setOrdrarChartData([]);
+    setOrdrarWeeklyTotal(0);
+    setOrdrarMonthlyTotal(0);
     
     setDialGroups([]);
     setDialGroupSummaries(new Map());
@@ -137,6 +176,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
       const chartData = await Promise.all(chartDataPromises);
       setAvtalChartData(chartData);
+
+      // Get weekly total
+      const weekDates = getCurrentWeekDates();
+      const weeklyCount = await salesysApi.getOffersCount({
+        statuses: ['signed'],
+        from: weekDates.start.toISOString(),
+        to: weekDates.end.toISOString()
+      });
+      setAvtalWeeklyTotal(weeklyCount);
+
+      // Get monthly total
+      const monthDates = getCurrentMonthDates();
+      const monthlyCount = await salesysApi.getOffersCount({
+        statuses: ['signed'],
+        from: monthDates.start.toISOString(),
+        to: monthDates.end.toISOString()
+      });
+      setAvtalMonthlyTotal(monthlyCount);
       
       console.log('Loaded avtal count:', count);
     } catch (error) {
@@ -181,6 +238,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const chartData = await Promise.all(chartDataPromises);
       setSamtalChartData(chartData);
 
+      // Get weekly total
+      const weekDates = getCurrentWeekDates();
+      const weeklyResponse = await salesysApi.getCalls({
+        count: 1,
+        after: weekDates.start.toISOString(),
+        before: weekDates.end.toISOString()
+      });
+      setSamtalWeeklyTotal(weeklyResponse.total);
+
+      // Get monthly total
+      const monthDates = getCurrentMonthDates();
+      const monthlyResponse = await salesysApi.getCalls({
+        count: 1,
+        after: monthDates.start.toISOString(),
+        before: monthDates.end.toISOString()
+      });
+      setSamtalMonthlyTotal(monthlyResponse.total);
+
       console.log('Loaded samtal count:', response.total);
     } catch (error) {
       const errorMsg = 'Kunde inte ladda samtalsdata';
@@ -223,6 +298,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
       const chartData = await Promise.all(chartDataPromises);
       setOrdrarChartData(chartData);
+
+      // Get weekly total
+      const weekDates = getCurrentWeekDates();
+      const weeklyResponse = await salesysApi.getOrders({
+        count: 1,
+        from: weekDates.start.toISOString(),
+        to: weekDates.end.toISOString()
+      });
+      setOrdrarWeeklyTotal(weeklyResponse.total);
+
+      // Get monthly total
+      const monthDates = getCurrentMonthDates();
+      const monthlyResponse = await salesysApi.getOrders({
+        count: 1,
+        from: monthDates.start.toISOString(),
+        to: monthDates.end.toISOString()
+      });
+      setOrdrarMonthlyTotal(monthlyResponse.total);
 
       console.log('Loaded ordrar count:', response.total);
     } catch (error) {
@@ -351,6 +444,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('avtal')}
               chartData={avtalChartData}
+              weeklyTotal={avtalWeeklyTotal}
+              monthlyTotal={avtalMonthlyTotal}
             />
             
             <DashboardCard
@@ -363,6 +458,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('samtal')}
               chartData={samtalChartData}
+              weeklyTotal={samtalWeeklyTotal}
+              monthlyTotal={samtalMonthlyTotal}
             />
             
             <DashboardCard
@@ -375,6 +472,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('ordrar')}
               chartData={ordrarChartData}
+              weeklyTotal={ordrarWeeklyTotal}
+              monthlyTotal={ordrarMonthlyTotal}
             />
           </div>
         </section>
