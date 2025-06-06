@@ -361,7 +361,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return (
       <div className="min-h-screen bg-white">
         <div className="container mx-auto px-4 py-12">
-          <div className="flex justify-between items-start mb-2">
+          <div className="flex justify-between items-start mb-6 mt-12">
             <div className="flex items-baseline gap-3">
               <h1 className="text-4xl font-light text-gray-800">Hej Viktor</h1>
               <p className="text-lg text-gray-600">
