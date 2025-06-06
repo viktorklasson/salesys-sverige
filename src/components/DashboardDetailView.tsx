@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,13 +29,17 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
     setError('');
     
     try {
+      console.log('Loading dashboard results for ID:', dashboard.id);
+      console.log('Dashboard object:', dashboard);
+      
       const data = await salesysApi.getDashboardResults(dashboard.id);
       setResults(data);
       console.log('Loaded dashboard results:', data);
     } catch (error) {
-      const errorMsg = 'Kunde inte ladda dashboard-data';
+      const errorMsg = `Kunde inte ladda dashboard-data för ${dashboard.name}`;
       setError(errorMsg);
       console.error('Error loading dashboard results:', error);
+      console.error('Dashboard ID that failed:', dashboard.id);
       toast({
         title: "Fel",
         description: errorMsg,
@@ -108,7 +111,7 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
           <div>
             <h1 className="text-2xl font-light text-gray-800">{dashboard.name}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {dashboard.readers.length} reader{dashboard.readers.length !== 1 ? 's' : ''}
+              {dashboard.readers.length} reader{dashboard.readers.length !== 1 ? 's' : ''} • ID: {dashboard.id}
             </p>
           </div>
         </div>
@@ -129,7 +132,18 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
         ) : error ? (
           <Card className="border-red-100 bg-red-50 rounded-2xl">
             <CardContent className="pt-6">
-              <div className="text-sm text-red-600">{error}</div>
+              <div className="text-sm text-red-600 space-y-2">
+                <p>{error}</p>
+                <p className="text-xs text-gray-500">Dashboard ID: {dashboard.id}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={loadDashboardResults}
+                  className="mt-2"
+                >
+                  Försök igen
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
