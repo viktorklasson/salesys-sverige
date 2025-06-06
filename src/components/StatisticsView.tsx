@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Users, Filter } from 'lucide-react';
 import * as RechartsPrimitive from 'recharts';
-import { ChartContainer, type ChartConfig } from '@/components/ui/stats-4';
+import { ChartContainer } from '@/components/ui/stats-4';
+import { type ChartConfig } from '@/components/ui/chart';
 import { salesysApi, StatisticsData, User, Team } from '@/services/salesysApi';
 import {
   DropdownMenu,

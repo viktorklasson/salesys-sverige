@@ -361,5 +361,5 @@ export default function Stats10() {
   );
 }
 
-// Export the chart components for use in other files
-export { ChartContainer, ChartStyle, useChart, type ChartConfig };
+// Export the chart components for use in other files (but not ChartConfig to avoid conflicts)
+export { ChartContainer, ChartStyle, useChart };
