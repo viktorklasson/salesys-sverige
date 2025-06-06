@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Calendar, Filter } from 'lucide-react';
+import { ChevronLeft, Calendar, Filter, User } from 'lucide-react';
 import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,13 +20,21 @@ interface ChartDataPoint {
   label: string;
 }
 
+interface UserStats {
+  userId: string;
+  fullName: string;
+  totalCount: number;
+}
+
 const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => {
   const { toast } = useToast();
-  const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'last30days' | 'all'>('last30days');
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [totalCount, setTotalCount] = useState(0);
+  const [userStats, setUserStats] = useState<UserStats[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   // Helper function to get date ranges
   const getDateRange = (range: string): { from: string; to: string } => {
@@ -56,6 +64,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         to.setHours(23, 59, 59, 999);
         break;
+      case 'last30days':
+        from = new Date(now);
+        from.setDate(now.getDate() - 30);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(now);
+        to.setHours(23, 59, 59, 999);
+        break;
       case 'all':
         from = new Date(now.getFullYear(), 0, 1);
         from.setHours(0, 0, 0, 0);
@@ -63,8 +78,11 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         to.setHours(23, 59, 59, 999);
         break;
       default:
-        from = new Date(now.getFullYear(), now.getMonth(), 1);
-        to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        from = new Date(now);
+        from.setDate(now.getDate() - 30);
+        from.setHours(0, 0, 0, 0);
+        to = new Date(now);
+        to.setHours(23, 59, 59, 999);
     }
 
     return {
@@ -261,6 +279,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       setData(chartData);
       setTotalCount(total);
       console.log(`Loaded ${statType} statistics:`, { chartData, total });
+
+      // Load user statistics
+      await loadUserStats(from, to);
       
     } catch (error) {
       const errorMsg = `Kunde inte ladda ${statType}-statistik`;
@@ -268,6 +289,66 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       console.error('Error loading statistics:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserStats = async (from: string, to: string) => {
+    setLoadingUsers(true);
+    try {
+      // Get all users first
+      const users = await salesysApi.getUsers();
+      const userStatsPromises = users.map(async (user) => {
+        let count = 0;
+        try {
+          if (statType === 'avtal') {
+            const offers = await salesysApi.getOffers({
+              statuses: ['signed'],
+              from,
+              to,
+              count: 1000 // Get a large number to count properly
+            });
+            // Filter by userId if the API supports it, otherwise count all for now
+            count = offers.data.length;
+          } else if (statType === 'samtal') {
+            const calls = await salesysApi.getCalls({
+              after: from,
+              before: to,
+              count: 1000
+            });
+            // Filter by userId if available in call data
+            count = calls.data.filter(call => call.userId === user.id).length;
+          } else if (statType === 'ordrar') {
+            const orders = await salesysApi.getOrders({
+              from,
+              to,
+              count: 1000
+            });
+            // Filter by userId if available in order data
+            count = orders.data.filter(order => order.userId === user.id).length;
+          }
+        } catch (error) {
+          console.error(`Error loading stats for user ${user.fullName}:`, error);
+        }
+
+        return {
+          userId: user.id,
+          fullName: user.fullName,
+          totalCount: count
+        };
+      });
+
+      const stats = await Promise.all(userStatsPromises);
+      // Sort by totalCount descending and take top 10
+      const sortedStats = stats
+        .filter(stat => stat.totalCount > 0)
+        .sort((a, b) => b.totalCount - a.totalCount)
+        .slice(0, 10);
+      
+      setUserStats(sortedStats);
+    } catch (error) {
+      console.error('Error loading user statistics:', error);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -294,6 +375,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       case 'today': return 'idag';
       case 'week': return 'denna vecka';
       case 'month': return 'denna månad';
+      case 'last30days': return 'senaste 30 dagarna';
       case 'all': return 'totalt';
       default: return '';
     }
@@ -322,14 +404,15 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
         {/* Time Range Selector */}
         <div className="flex items-center gap-4 mb-6">
-          <Select value={timeRange} onValueChange={(value: 'today' | 'week' | 'month' | 'all') => setTimeRange(value)}>
-            <SelectTrigger className="w-40">
+          <Select value={timeRange} onValueChange={(value: 'today' | 'week' | 'month' | 'last30days' | 'all') => setTimeRange(value)}>
+            <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="today">Idag</SelectItem>
               <SelectItem value="week">Denna vecka</SelectItem>
               <SelectItem value="month">Denna månad</SelectItem>
+              <SelectItem value="last30days">Senaste 30 dagarna</SelectItem>
               <SelectItem value="all">Hela året</SelectItem>
             </SelectContent>
           </Select>
@@ -352,71 +435,120 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
             </CardContent>
           </Card>
         ) : (
-          <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-light">
-                {getTitle()} - {getRangeLabel()}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-2 sm:px-6">
-              <div className="space-y-6">
-                {/* Summary Stats */}
-                <div className="flex items-center gap-6 px-4 sm:px-0">
-                  <div>
-                    <div className="text-3xl font-light" style={{ color: getColor() }}>
-                      {totalCount.toLocaleString('sv-SE')}
-                    </div>
-                    <div className="text-sm text-gray-500">Totalt {getRangeLabel()}</div>
-                  </div>
-                  {data.length > 0 && (
+          <div className="space-y-6">
+            {/* Chart Card */}
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light">
+                  {getTitle()} - {getRangeLabel()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 sm:px-6">
+                <div className="space-y-6">
+                  {/* Summary Stats */}
+                  <div className="flex items-center gap-6 px-4 sm:px-0">
                     <div>
-                      <div className="text-lg font-light text-gray-600">
-                        {Math.round(totalCount / data.length)}
+                      <div className="text-3xl font-light" style={{ color: getColor() }}>
+                        {totalCount.toLocaleString('sv-SE')}
                       </div>
-                      <div className="text-sm text-gray-500">
-                        Snitt per {timeRange === 'today' ? 'timme' : 'dag'}
+                      <div className="text-sm text-gray-500">Totalt {getRangeLabel()}</div>
+                    </div>
+                    {data.length > 0 && (
+                      <div>
+                        <div className="text-lg font-light text-gray-600">
+                          {Math.round(totalCount / data.length)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Snitt per {timeRange === 'today' ? 'timme' : 'dag'}
+                        </div>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Chart */}
+                  {data.length > 0 && (
+                    <div className="h-80 -mx-4 sm:-mx-2 lg:mx-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={data} margin={{ top: 20, right: 5, left: 5, bottom: timeRange === 'today' ? 60 : 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis 
+                            dataKey="label"
+                            tick={{ fontSize: 12 }}
+                            angle={timeRange === 'today' ? -45 : 0}
+                            textAnchor={timeRange === 'today' ? 'end' : 'middle'}
+                            height={timeRange === 'today' ? 60 : 30}
+                            interval={0}
+                          />
+                          <YAxis tick={{ fontSize: 12 }} width={30} />
+                          <Tooltip 
+                            formatter={(value: any) => [value, getTitle()]}
+                            labelFormatter={(label: string) => `${timeRange === 'today' ? 'Klockan' : 'Datum'}: ${label}`}
+                          />
+                          <Bar 
+                            dataKey="value" 
+                            fill={getColor()}
+                            radius={[2, 2, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {data.length === 0 && (
+                    <div className="text-center text-gray-500 py-12">
+                      Ingen data hittades för vald period
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Chart */}
-                {data.length > 0 && (
-                  <div className="h-80 -mx-2 sm:mx-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: timeRange === 'today' ? 60 : 30 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                          dataKey="label"
-                          tick={{ fontSize: 12 }}
-                          angle={timeRange === 'today' ? -45 : 0}
-                          textAnchor={timeRange === 'today' ? 'end' : 'middle'}
-                          height={timeRange === 'today' ? 60 : 30}
-                          interval={0}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} width={40} />
-                        <Tooltip 
-                          formatter={(value: any) => [value, getTitle()]}
-                          labelFormatter={(label: string) => `${timeRange === 'today' ? 'Klockan' : 'Datum'}: ${label}`}
-                        />
-                        <Bar 
-                          dataKey="value" 
-                          fill={getColor()}
-                          radius={[2, 2, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+            {/* User Statistics */}
+            <Card className="bg-white border-0 shadow-sm rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-light flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Topp användare - {getRangeLabel()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingUsers ? (
+                  <div className="animate-pulse space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <div className="bg-gray-200 h-4 w-32 rounded" />
+                        <div className="bg-gray-200 h-4 w-12 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                ) : userStats.length > 0 ? (
+                  <div className="space-y-3">
+                    {userStats.map((user, index) => (
+                      <div key={user.userId} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                        <div className="flex items-center gap-3">
+                          <div className="text-sm font-medium text-gray-400 w-6">
+                            #{index + 1}
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.fullName}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" style={{ backgroundColor: `${getColor()}20`, color: getColor() }}>
+                            {user.totalCount.toLocaleString('sv-SE')}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    Ingen användardata hittades för vald period
                   </div>
                 )}
-
-                {data.length === 0 && (
-                  <div className="text-center text-gray-500 py-12">
-                    Ingen data hittades för vald period
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
