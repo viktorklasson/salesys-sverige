@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,6 +171,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('salesys_bearer_token');
+    salesysApi.setBearerToken(''); // Clear the cached token in the service
     onLogout();
   };
 
