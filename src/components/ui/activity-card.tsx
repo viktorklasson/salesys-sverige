@@ -1,6 +1,4 @@
 
-"use client";
-
 import { Activity, ArrowUpRight, Plus, Target, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -132,7 +130,7 @@ export function ActivityCard({
               onClick={onAddGoal}
               className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
-              <Plus className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              <Plus className="w-4 w-4 text-zinc-500 dark:text-zinc-400" />
             </button>
           </div>
 
