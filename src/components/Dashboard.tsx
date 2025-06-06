@@ -405,14 +405,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Minimal Header */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              {getTodayDateString()}
-            </div>
+    <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100">
+      {/* Top Section with Greeting and Settings */}
+      <div className="relative">
+        <div className="container mx-auto px-4 pt-8 pb-6">
+          <div className="flex items-start justify-between">
+            <h1 className="text-4xl font-nunito font-thin text-gray-800">
+              Hej Viktor,
+            </h1>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
