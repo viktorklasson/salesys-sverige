@@ -26,13 +26,13 @@ const DialGroupCard: React.FC<DialGroupCardProps> = ({
   const invantarPercentage = totalContacts > 0 ? (invantarContacts / totalContacts) * 100 : 0;
 
   return (
-    <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
+    <Card className="bg-white border-0 shadow-sm rounded-2xl">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-slate-700 truncate">
+          <CardTitle className="text-sm font-light text-gray-700 truncate">
             {dialGroup.name}
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs font-light">
             #{dialGroup.serialId}
           </Badge>
         </div>
@@ -40,43 +40,43 @@ const DialGroupCard: React.FC<DialGroupCardProps> = ({
       <CardContent className="space-y-4">
         {isLoading ? (
           <div className="space-y-3">
-            <div className="animate-pulse bg-muted h-4 w-full rounded" />
-            <div className="animate-pulse bg-muted h-4 w-3/4 rounded" />
-            <div className="animate-pulse bg-muted h-2 w-full rounded" />
+            <div className="animate-pulse bg-gray-200 h-4 w-full rounded" />
+            <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
+            <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
           </div>
         ) : (
           <>
             {/* Summary Stats */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="flex items-center space-x-2">
-                <Users className="h-3 w-3 text-blue-500" />
+                <Users className="h-3 w-3 text-[#1665c0]" />
                 <div>
-                  <div className="font-medium text-slate-700">Totalt</div>
-                  <div className="text-slate-500">{totalContacts.toLocaleString('sv-SE')}</div>
+                  <div className="font-light text-gray-600">Totalt</div>
+                  <div className="text-gray-800 font-thin">{totalContacts.toLocaleString('sv-SE')}</div>
                 </div>
               </div>
               
               <div className="flex items-center space-x-2">
                 <UserCheck className="h-3 w-3 text-green-500" />
                 <div>
-                  <div className="font-medium text-slate-700">Bearbetade</div>
-                  <div className="text-slate-500">{bearbetadeContacts.toLocaleString('sv-SE')}</div>
+                  <div className="font-light text-gray-600">Bearbetade</div>
+                  <div className="text-gray-800 font-thin">{bearbetadeContacts.toLocaleString('sv-SE')}</div>
                 </div>
               </div>
               
               <div className="flex items-center space-x-2">
                 <Clock className="h-3 w-3 text-orange-500" />
                 <div>
-                  <div className="font-medium text-slate-700">Inväntar</div>
-                  <div className="text-slate-500">{invantarContacts.toLocaleString('sv-SE')}</div>
+                  <div className="font-light text-gray-600">Inväntar</div>
+                  <div className="text-gray-800 font-thin">{invantarContacts.toLocaleString('sv-SE')}</div>
                 </div>
               </div>
               
               <div className="flex items-center space-x-2">
                 <Phone className="h-3 w-3 text-purple-500" />
                 <div>
-                  <div className="font-medium text-slate-700">Kvar</div>
-                  <div className="text-slate-500">
+                  <div className="font-light text-gray-600">Kvar</div>
+                  <div className="text-gray-800 font-thin">
                     {(totalContacts - bearbetadeContacts - invantarContacts).toLocaleString('sv-SE')}
                   </div>
                 </div>
@@ -84,18 +84,18 @@ const DialGroupCard: React.FC<DialGroupCardProps> = ({
             </div>
 
             {/* Progress Bars */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-600">Bearbetade</span>
-                <span className="text-slate-500">{bearbetadePercentage.toFixed(1)}%</span>
+                <span className="text-gray-500 font-light">Bearbetade</span>
+                <span className="text-gray-400 font-thin">{bearbetadePercentage.toFixed(1)}%</span>
               </div>
-              <Progress value={bearbetadePercentage} className="h-2" />
+              <Progress value={bearbetadePercentage} className="h-1" />
               
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-600">Inväntar återkoppling</span>
-                <span className="text-slate-500">{invantarPercentage.toFixed(1)}%</span>
+                <span className="text-gray-500 font-light">Inväntar återkoppling</span>
+                <span className="text-gray-400 font-thin">{invantarPercentage.toFixed(1)}%</span>
               </div>
-              <Progress value={invantarPercentage} className="h-2 [&>div]:bg-orange-500" />
+              <Progress value={invantarPercentage} className="h-1 [&>div]:bg-orange-500" />
             </div>
           </>
         )}

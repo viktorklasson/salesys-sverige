@@ -30,62 +30,32 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   filterInfo,
   className
 }) => {
-  const colorClasses = {
-    blue: 'from-blue-500/10 to-blue-600/5 border-blue-200',
-    green: 'from-green-500/10 to-green-600/5 border-green-200',
-    purple: 'from-purple-500/10 to-purple-600/5 border-purple-200',
-  };
-
-  const iconColors = {
-    blue: 'text-blue-600',
+  const countColors = {
+    blue: 'text-[#1665c0]',
     green: 'text-green-600',
     purple: 'text-purple-600',
   };
 
-  const countColors = {
-    blue: 'text-blue-700',
-    green: 'text-green-700',
-    purple: 'text-purple-700',
-  };
-
   return (
     <Card className={cn(
-      'bg-gradient-to-br border-2 transition-all duration-200 hover:shadow-md',
-      colorClasses[color],
+      'transition-all duration-200 hover:shadow-md',
       className
     )}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <div className="flex items-center space-x-1">
-          {filterInfo && (
-            <Badge variant="secondary" className="text-xs">
-              <Filter className="h-3 w-3 mr-1" />
-              {filterInfo}
-            </Badge>
-          )}
-          {onSettings && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={onSettings}
-            >
-              <Settings className={cn('h-4 w-4', iconColors[color])} />
-            </Button>
-          )}
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-light text-gray-600">
+            {title}
+          </CardTitle>
           {onRefresh && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
               onClick={onRefresh}
               disabled={isLoading}
             >
               <RefreshCw className={cn(
-                'h-4 w-4',
-                iconColors[color],
+                'h-3 w-3',
                 isLoading && 'animate-spin'
               )} />
             </Button>
@@ -93,24 +63,27 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col space-y-2">
+        <div className="space-y-3">
           {error ? (
-            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+            <div className="text-sm text-red-500 bg-red-50 p-3 rounded-lg">
               {error}
             </div>
           ) : (
             <>
-              <div className={cn('text-3xl font-bold', countColors[color])}>
+              <div className={cn('text-4xl font-thin', countColors[color])}>
                 {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-pulse bg-muted h-8 w-16 rounded" />
-                  </div>
+                  <div className="animate-pulse bg-gray-200 h-10 w-20 rounded" />
                 ) : (
                   count.toLocaleString('sv-SE')
                 )}
               </div>
               {isLoading && (
                 <Progress value={undefined} className="h-1" />
+              )}
+              {filterInfo && (
+                <div className="text-xs text-gray-400">
+                  {filterInfo}
+                </div>
               )}
             </>
           )}

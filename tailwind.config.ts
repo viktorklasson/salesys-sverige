@@ -22,6 +22,9 @@ export default {
 			fontFamily: {
 				'sans': ['Nunito', 'sans-serif'],
 			},
+			fontWeight: {
+				'thin': '100',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -29,7 +32,7 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					DEFAULT: 'hsl(var(--primary))',
+					DEFAULT: '#1665c0',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
 				secondary: {

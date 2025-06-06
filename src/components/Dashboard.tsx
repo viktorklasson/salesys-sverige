@@ -4,11 +4,17 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CalendarDays, RefreshCw, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { salesysApi, DialGroup, DialGroupSummary } from '@/services/salesysApi';
 import DashboardCard from './DashboardCard';
 import DialGroupCard from './DialGroupCard';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -62,11 +68,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const errorMsg = 'Kunde inte ladda avtalsdata';
       setAvtalError(errorMsg);
       console.error('Error loading avtal:', error);
-      toast({
-        title: "Fel vid laddning av avtal",
-        description: errorMsg,
-        variant: "destructive",
-      });
     } finally {
       setAvtalLoading(false);
     }
@@ -87,11 +88,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const errorMsg = 'Kunde inte ladda samtalsdata';
       setSamtalError(errorMsg);
       console.error('Error loading samtal:', error);
-      toast({
-        title: "Fel vid laddning av samtal",
-        description: errorMsg,
-        variant: "destructive",
-      });
     } finally {
       setSamtalLoading(false);
     }
@@ -112,11 +108,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const errorMsg = 'Kunde inte ladda orderdata';
       setOrdrarError(errorMsg);
       console.error('Error loading ordrar:', error);
-      toast({
-        title: "Fel vid laddning av ordrar",
-        description: errorMsg,
-        variant: "destructive",
-      });
     } finally {
       setOrdrarLoading(false);
     }
@@ -148,11 +139,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       const errorMsg = 'Kunde inte ladda ringgrupper';
       setDialGroupsError(errorMsg);
       console.error('Error loading dial groups:', error);
-      toast({
-        title: "Fel vid laddning av ringgrupper",
-        description: errorMsg,
-        variant: "destructive",
-      });
     } finally {
       setDialGroupsLoading(false);
     }
@@ -168,9 +154,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     ]);
   };
 
-  // Initial load
+  // Auto-refresh every minute
   useEffect(() => {
     loadAllData();
+    
+    const interval = setInterval(() => {
+      loadAllData();
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -179,52 +171,35 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Minimal Header */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">SaleSys Dashboard</h1>
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground mt-1">
-                <CalendarDays className="h-4 w-4" />
-                <span>Idag: {getTodayDateString()}</span>
-              </div>
+            <div className="text-sm text-gray-500">
+              {getTodayDateString()}
             </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadAllData}
-                disabled={avtalLoading || samtalLoading || ordrarLoading || dialGroupsLoading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${(avtalLoading || samtalLoading || ordrarLoading || dialGroupsLoading) ? 'animate-spin' : ''}`} />
-                Uppdatera
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logga ut
-              </Button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logga ut
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-8">
         {/* Today's Dashboard Cards */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-foreground">Dagens översikt</h2>
-            <Badge variant="secondary" className="text-xs">
-              Senast uppdaterad: {new Date().toLocaleTimeString('sv-SE', { timeZone: 'Europe/Stockholm' })}
-            </Badge>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DashboardCard
               title="Avtal signerade"
               count={avtalCount}
@@ -233,6 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               color="green"
               onRefresh={loadAvtal}
               filterInfo="Status: Signerad"
+              className="bg-white border-0 shadow-sm rounded-2xl"
             />
             
             <DashboardCard
@@ -243,6 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               color="blue"
               onRefresh={loadSamtal}
               filterInfo="Alla samtal"
+              className="bg-white border-0 shadow-sm rounded-2xl"
             />
             
             <DashboardCard
@@ -253,39 +230,38 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               color="purple"
               onRefresh={loadOrdrar}
               filterInfo="Alla ordrar"
+              className="bg-white border-0 shadow-sm rounded-2xl"
             />
           </div>
         </section>
 
-        <Separator />
-
         {/* Dial Groups Section */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-foreground">Ringgrupper</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-light text-gray-700">Ringgrupper</h2>
             <Badge variant="outline" className="text-xs">
               {dialGroups.length} grupper
             </Badge>
           </div>
           
           {dialGroupsError && (
-            <Card className="border-destructive/50 bg-destructive/5">
+            <Card className="border-red-100 bg-red-50 rounded-2xl">
               <CardContent className="pt-6">
-                <div className="text-sm text-destructive">{dialGroupsError}</div>
+                <div className="text-sm text-red-600">{dialGroupsError}</div>
               </CardContent>
             </Card>
           )}
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {dialGroupsLoading ? (
               // Loading skeletons
               Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200">
+                <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
                   <CardContent className="pt-6 space-y-3">
-                    <div className="animate-pulse bg-muted h-4 w-3/4 rounded" />
-                    <div className="animate-pulse bg-muted h-4 w-1/2 rounded" />
-                    <div className="animate-pulse bg-muted h-2 w-full rounded" />
-                    <div className="animate-pulse bg-muted h-2 w-full rounded" />
+                    <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
+                    <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
+                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
+                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
                   </CardContent>
                 </Card>
               ))
@@ -301,8 +277,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </div>
           
           {!dialGroupsLoading && dialGroups.length === 0 && !dialGroupsError && (
-            <Card>
-              <CardContent className="pt-6 text-center text-muted-foreground">
+            <Card className="bg-white rounded-2xl border-0 shadow-sm">
+              <CardContent className="pt-6 text-center text-gray-500">
                 Inga ringgrupper hittades
               </CardContent>
             </Card>
