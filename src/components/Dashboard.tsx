@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   // View state
   const [currentView, setCurrentView] = useState<'dashboard' | 'statistics'>('dashboard');
   const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar'>('avtal');
+  
+  // Track if this is the initial load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Today's stats state
   const [avtalCount, setAvtalCount] = useState(0);
@@ -146,7 +150,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   // Load Avtal (signed contracts) with 7-day trend
   const loadAvtal = async () => {
-    setAvtalLoading(true);
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      setAvtalLoading(true);
+    }
     setAvtalError('');
     
     try {
@@ -201,13 +208,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setAvtalError(errorMsg);
       console.error('Error loading avtal:', error);
     } finally {
-      setAvtalLoading(false);
+      if (isInitialLoad) {
+        setAvtalLoading(false);
+      }
     }
   };
 
   // Load Samtal (calls) with 7-day trend
   const loadSamtal = async () => {
-    setSamtalLoading(true);
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      setSamtalLoading(true);
+    }
     setSamtalError('');
     
     try {
@@ -262,13 +274,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setSamtalError(errorMsg);
       console.error('Error loading samtal:', error);
     } finally {
-      setSamtalLoading(false);
+      if (isInitialLoad) {
+        setSamtalLoading(false);
+      }
     }
   };
 
   // Load Ordrar (orders) with 7-day trend
   const loadOrdrar = async () => {
-    setOrdrarLoading(true);
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      setOrdrarLoading(true);
+    }
     setOrdrarError('');
     
     try {
@@ -323,13 +340,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setOrdrarError(errorMsg);
       console.error('Error loading ordrar:', error);
     } finally {
-      setOrdrarLoading(false);
+      if (isInitialLoad) {
+        setOrdrarLoading(false);
+      }
     }
   };
 
   // Load Dial Groups
   const loadDialGroups = async () => {
-    setDialGroupsLoading(true);
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      setDialGroupsLoading(true);
+    }
     setDialGroupsError('');
     
     try {
@@ -354,7 +376,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       setDialGroupsError(errorMsg);
       console.error('Error loading dial groups:', error);
     } finally {
-      setDialGroupsLoading(false);
+      if (isInitialLoad) {
+        setDialGroupsLoading(false);
+      }
     }
   };
 
@@ -366,6 +390,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       loadOrdrar(),
       loadDialGroups()
     ]);
+    
+    // Mark initial load as complete
+    setIsInitialLoad(false);
   };
 
   // Auto-refresh every minute
@@ -408,7 +435,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     <div className="min-h-screen bg-white">
       {/* Top Section with Greeting and Settings */}
       <div className="relative">
-        <div className="container mx-auto px-4 pt-8 pb-6">
+        <div className="container mx-auto px-4 pt-12 pb-2">
           <div className="flex items-start justify-between">
             <h1 className="text-4xl font-nunito font-thin text-gray-800">
               Hej Viktor,

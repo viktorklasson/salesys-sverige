@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Users, Filter } from 'lucide-react';
+import { ArrowLeft, Users, Filter, Settings } from 'lucide-react';
 import { ChartContainer } from '@/components/ui/stats-4';
 import { type ChartConfig } from '@/components/ui/chart';
 import * as RechartsPrimitive from 'recharts';
@@ -13,7 +14,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface StatisticsViewProps {
   statType: 'avtal' | 'samtal' | 'ordrar';
@@ -43,6 +53,11 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
+  
+  // Data filter states
+  const [contractStatus, setContractStatus] = useState<string>('signed');
+  const [orderTag, setOrderTag] = useState<string>('all');
+  const [callTag, setCallTag] = useState<string>('all');
 
   const getStatTitle = () => {
     switch (statType) {
@@ -75,7 +90,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
   useEffect(() => {
     loadData();
-  }, [statType]);
+  }, [statType, contractStatus, orderTag, callTag]);
 
   const loadData = async () => {
     setLoading(true);
@@ -291,6 +306,71 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
             <h1 className="text-xl sm:text-2xl font-light text-gray-800">{getStatTitle()}</h1>
             <Badge variant="outline" className="self-start">Senaste 30 dagarna</Badge>
           </div>
+          
+          {/* Data Filter Settings */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="mr-2 h-4 w-4" />
+                Datafilter
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Filtrera data</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              {statType === 'avtal' && (
+                <div className="p-2">
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Avtalsstatus</label>
+                  <Select value={contractStatus} onValueChange={setContractStatus}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="signed">Signerade</SelectItem>
+                      <SelectItem value="pending">Väntande</SelectItem>
+                      <SelectItem value="cancelled">Avbrutna</SelectItem>
+                      <SelectItem value="all">Alla</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {statType === 'ordrar' && (
+                <div className="p-2">
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Ordertagg</label>
+                  <Select value={orderTag} onValueChange={setOrderTag}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alla</SelectItem>
+                      <SelectItem value="urgent">Brådskande</SelectItem>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="bulk">Bulk</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              {statType === 'samtal' && (
+                <div className="p-2">
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Samtalstyp</label>
+                  <Select value={callTag} onValueChange={setCallTag}>
+                    <SelectTrigger className="h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alla</SelectItem>
+                      <SelectItem value="sales">Försäljning</SelectItem>
+                      <SelectItem value="support">Support</SelectItem>
+                      <SelectItem value="followup">Uppföljning</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Chart */}
@@ -327,7 +407,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
                         dataKey={userName}
                         stroke={colors[index % colors.length]}
                         strokeWidth={2}
-                        dot={{ r: 4 }}
+                        dot={false}
                       />
                     ))}
                   </RechartsPrimitive.LineChart>
