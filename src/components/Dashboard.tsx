@@ -360,12 +360,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
     return (
       <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-3xl font-light text-gray-800">Hej Viktor</h1>
+        <div className="container mx-auto px-4 py-12">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-4xl font-light text-gray-800">Hej Viktor</h1>
+              <p className="text-lg text-gray-600">
+                {getRelativeDateText(selectedDate)}
+              </p>
+            </div>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="border-0">
                   <Settings className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -379,13 +384,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
                 />
               </PopoverContent>
             </Popover>
-          </div>
-
-          {/* Date Info */}
-          <div className="mb-6">
-            <p className="text-gray-600">
-              {getRelativeDateText(selectedDate)}
-            </p>
           </div>
 
           {/* Statistics Cards */}
