@@ -126,16 +126,44 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           statisticsData = [];
       }
 
-      // Process chart data
-      const chartMap = new Map<string, number>();
+      // Process chart data for horizontal stacked bar chart
+      const userChartMap = new Map<string, { [key: string]: number }>();
+      const dateSet = new Set<string>();
+
       statisticsData.forEach(item => {
         const date = item.intervalStart.split('T')[0];
-        chartMap.set(date, (chartMap.get(date) || 0) + item.count);
+        const user = usersData.find(u => u.id === item.userId);
+        const userName = user?.fullName || 'Okänd användare';
+        
+        dateSet.add(date);
+        
+        if (!userChartMap.has(userName)) {
+          userChartMap.set(userName, {});
+        }
+        
+        const userData = userChartMap.get(userName)!;
+        userData[date] = (userData[date] || 0) + item.count;
       });
 
-      const chartDataArray: ChartData[] = Array.from(chartMap.entries())
-        .map(([date, count]) => ({ date, count }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+      // Convert to chart format - taking top 5 users for better visibility
+      const topUsers = Array.from(userChartMap.entries())
+        .map(([userName, dates]) => ({
+          userName,
+          total: Object.values(dates).reduce((sum, count) => sum + count, 0)
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+
+      const chartDataArray: any[] = Array.from(dateSet)
+        .sort()
+        .map(date => {
+          const dataPoint: any = { date };
+          topUsers.forEach(({ userName }) => {
+            const userMap = userChartMap.get(userName);
+            dataPoint[userName] = userMap?.[date] || 0;
+          });
+          return dataPoint;
+        });
 
       setChartData(chartDataArray);
 
@@ -200,21 +228,25 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
     return `${minutes}m`;
   };
 
-  const chartConfig: ChartConfig = {
-    count: {
-      label: 'Antal',
-      color: '#1665c0',
-    },
-  };
+  // Generate colors for top users
+  const colors = ['#1665c0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const topUsers = chartData.length > 0 ? Object.keys(chartData[0]).filter(key => key !== 'date') : [];
+  const chartConfig: ChartConfig = topUsers.reduce((config, userName, index) => {
+    config[userName] = {
+      label: userName,
+      color: colors[index % colors.length],
+    };
+    return config;
+  }, {} as ChartConfig);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
         <div className="container mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="animate-pulse space-y-4 sm:space-y-6">
+            <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/2 sm:w-1/4"></div>
+            <div className="h-48 sm:h-64 bg-gray-200 rounded"></div>
+            <div className="h-24 sm:h-32 bg-gray-200 rounded"></div>
           </div>
         </div>
       </div>
@@ -223,9 +255,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
         <div className="container mx-auto">
-          <Button onClick={onBack} variant="ghost" className="mb-6">
+          <Button onClick={onBack} variant="ghost" className="mb-4 sm:mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Tillbaka
           </Button>
@@ -240,49 +272,59 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="container mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+      <div className="container mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button onClick={onBack} variant="ghost">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <Button onClick={onBack} variant="ghost" className="self-start">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Tillbaka
             </Button>
-            <h1 className="text-2xl font-light text-gray-800">{getStatTitle()}</h1>
-            <Badge variant="outline">Senaste 30 dagarna</Badge>
+            <h1 className="text-xl sm:text-2xl font-light text-gray-800">{getStatTitle()}</h1>
+            <Badge variant="outline" className="self-start">Senaste 30 dagarna</Badge>
           </div>
         </div>
 
         {/* Chart */}
         <Card className="bg-white border-0 shadow-sm rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-lg font-light text-gray-700">Trendanalys</CardTitle>
+            <CardTitle className="text-base sm:text-lg font-light text-gray-700">
+              Trendanalys - Topp 5 användare
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-64 sm:h-80">
               <ChartContainer config={chartConfig} className="w-full h-full">
-                <RechartsPrimitive.LineChart data={chartData}>
+                <RechartsPrimitive.BarChart 
+                  data={chartData} 
+                  layout="horizontal"
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
                   <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <RechartsPrimitive.XAxis 
+                  <RechartsPrimitive.XAxis type="number" stroke="#666" fontSize={12} />
+                  <RechartsPrimitive.YAxis 
+                    type="category" 
                     dataKey="date" 
-                    stroke="#666"
+                    stroke="#666" 
                     fontSize={12}
                     tickFormatter={(date) => new Date(date).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}
+                    width={60}
                   />
-                  <RechartsPrimitive.YAxis stroke="#666" fontSize={12} />
                   <RechartsPrimitive.Tooltip 
                     labelFormatter={(date) => new Date(date).toLocaleDateString('sv-SE')}
-                    formatter={(value) => [value, 'Antal']}
+                    formatter={(value, name) => [value, name]}
                   />
-                  <RechartsPrimitive.Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    stroke="#1665c0" 
-                    strokeWidth={2}
-                    dot={{ fill: '#1665c0', strokeWidth: 2, r: 4 }}
-                  />
-                </RechartsPrimitive.LineChart>
+                  <RechartsPrimitive.Legend />
+                  {topUsers.map((userName, index) => (
+                    <RechartsPrimitive.Bar
+                      key={userName}
+                      dataKey={userName}
+                      stackId="a"
+                      fill={colors[index % colors.length]}
+                    />
+                  ))}
+                </RechartsPrimitive.BarChart>
               </ChartContainer>
             </div>
           </CardContent>
@@ -291,17 +333,19 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         {/* User Stats Table */}
         <Card className="bg-white border-0 shadow-sm rounded-2xl">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-light text-gray-700 flex items-center gap-2">
-                <Users className="h-5 w-5" />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <CardTitle className="text-base sm:text-lg font-light text-gray-700 flex items-center gap-2">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 Användarstatistik
               </CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Filter className="mr-2 h-4 w-4" />
-                      {selectedUser === 'all' ? 'Alla användare' : users.find(u => u.id === selectedUser)?.fullName}
+                    <Button variant="outline" size="sm" className="justify-start">
+                      <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
+                        {selectedUser === 'all' ? 'Alla användare' : users.find(u => u.id === selectedUser)?.fullName}
+                      </span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -318,9 +362,11 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Filter className="mr-2 h-4 w-4" />
-                      {selectedTeam === 'all' ? 'Alla team' : teams.find(t => t.id === selectedTeam)?.name}
+                    <Button variant="outline" size="sm" className="justify-start">
+                      <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
+                        {selectedTeam === 'all' ? 'Alla team' : teams.find(t => t.id === selectedTeam)?.name}
+                      </span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -338,40 +384,42 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Användare</TableHead>
-                  <TableHead>Team</TableHead>
-                  <TableHead>Antal</TableHead>
-                  {statType === 'samtal' && (
-                    <>
-                      <TableHead>Anslutna</TableHead>
-                      <TableHead>Total tid</TableHead>
-                    </>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUserStats.map((user) => (
-                  <TableRow key={user.userId}>
-                    <TableCell className="font-medium">{user.fullName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" style={{ borderColor: teams.find(t => t.name === user.teamName)?.color }}>
-                        {user.teamName}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.totalCount}</TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[120px]">Användare</TableHead>
+                    <TableHead className="min-w-[100px]">Team</TableHead>
+                    <TableHead className="min-w-[80px]">Antal</TableHead>
                     {statType === 'samtal' && (
                       <>
-                        <TableCell>{user.connectedCount}</TableCell>
-                        <TableCell>{formatDuration(user.totalDuration || 0)}</TableCell>
+                        <TableHead className="min-w-[80px]">Anslutna</TableHead>
+                        <TableHead className="min-w-[80px]">Total tid</TableHead>
                       </>
                     )}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredUserStats.map((user) => (
+                    <TableRow key={user.userId}>
+                      <TableCell className="font-medium">{user.fullName}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" style={{ borderColor: teams.find(t => t.name === user.teamName)?.color }}>
+                          {user.teamName}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{user.totalCount}</TableCell>
+                      {statType === 'samtal' && (
+                        <>
+                          <TableCell>{user.connectedCount}</TableCell>
+                          <TableCell>{formatDuration(user.totalDuration || 0)}</TableCell>
+                        </>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>
