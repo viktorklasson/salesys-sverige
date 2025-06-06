@@ -1,3 +1,4 @@
+
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -31,7 +32,7 @@
  * 
  * DASHBOARDS:
  * - GET https://app.salesys.se/api/users/dashboards-v1
- * - GET https://app.salesys.se/api/users/dashboards-v1/{id}/results
+ * - POST https://app.salesys.se/api/users/dashboards-v1/{id}/results
  * 
  * USERS & TEAMS:
  * - GET https://app.salesys.se/api/users/users-v1
@@ -258,7 +259,7 @@ class SalesysApiService {
     return `${url}${separator}_cb=${timestamp}`;
   }
 
-  private async makeRequest<T>(url: string): Promise<T> {
+  private async makeRequest<T>(url: string, method: 'GET' | 'POST' = 'GET', body?: any): Promise<T> {
     const token = this.getBearerToken();
     if (!token) {
       throw new Error('Ingen bearer token tillgänglig. Vänligen logga in.');
@@ -268,7 +269,8 @@ class SalesysApiService {
     const urlWithCacheBusting = this.addCacheBusting(url);
     const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(urlWithCacheBusting)}`;
     
-    const response = await fetch(proxyUrl, {
+    const requestOptions: RequestInit = {
+      method,
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -276,7 +278,13 @@ class SalesysApiService {
         'Pragma': 'no-cache',
         'Expires': '0'
       },
-    });
+    };
+
+    if (body && method === 'POST') {
+      requestOptions.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(proxyUrl, requestOptions);
 
     if (!response.ok) {
       throw new Error(`API fel: ${response.status} ${response.statusText}`);
@@ -582,7 +590,7 @@ class SalesysApiService {
 
   async getDashboardResults(dashboardId: string): Promise<DashboardResult[]> {
     const url = `https://app.salesys.se/api/users/dashboards-v1/${dashboardId}/results`;
-    return this.makeRequest<DashboardResult[]>(url);
+    return this.makeRequest<DashboardResult[]>(url, 'POST');
   }
 }
 
