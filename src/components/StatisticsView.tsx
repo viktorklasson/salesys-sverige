@@ -1,13 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Users, Filter } from 'lucide-react';
-import * as RechartsPrimitive from 'recharts';
-import { ChartContainer } from '@/components/ui/stats-4';
-import { type ChartConfig } from '@/components/ui/chart';
+import Stats10 from '@/components/ui/stats-4';
 import { salesysApi, StatisticsData, User, Team } from '@/services/salesysApi';
 import {
   DropdownMenu,
@@ -286,47 +283,15 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Chart - Using Stats10 component */}
         <Card className="bg-white border-0 shadow-sm rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base sm:text-lg font-light text-gray-700">
-              Trendanalys - Topp 5 användare
+              Trendanalys - Topp användare
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-64 sm:h-80">
-              <ChartContainer config={chartConfig} className="w-full h-full">
-                <RechartsPrimitive.BarChart 
-                  data={chartData} 
-                  layout="horizontal"
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <RechartsPrimitive.XAxis type="number" stroke="#666" fontSize={12} />
-                  <RechartsPrimitive.YAxis 
-                    type="category" 
-                    dataKey="date" 
-                    stroke="#666" 
-                    fontSize={12}
-                    tickFormatter={(date) => new Date(date).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}
-                    width={60}
-                  />
-                  <RechartsPrimitive.Tooltip 
-                    labelFormatter={(date) => new Date(date).toLocaleDateString('sv-SE')}
-                    formatter={(value, name) => [value, name]}
-                  />
-                  <RechartsPrimitive.Legend />
-                  {topUsers.map((userName, index) => (
-                    <RechartsPrimitive.Bar
-                      key={userName}
-                      dataKey={userName}
-                      stackId="a"
-                      fill={colors[index % colors.length]}
-                    />
-                  ))}
-                </RechartsPrimitive.BarChart>
-              </ChartContainer>
-            </div>
+          <CardContent className="p-0">
+            <Stats10 />
           </CardContent>
         </Card>
 
