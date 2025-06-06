@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import MiniChart from './MiniChart';
 
 interface DashboardCardProps {
   title: string;
@@ -13,6 +14,7 @@ interface DashboardCardProps {
   filterInfo?: string;
   className?: string;
   onClick?: () => void;
+  chartData?: Array<{ date: string; value: number }>;
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({
@@ -23,7 +25,8 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   color = 'blue',
   filterInfo,
   className,
-  onClick
+  onClick,
+  chartData
 }) => {
   const countColors = {
     blue: 'text-[#1665c0]',
@@ -64,6 +67,9 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               </div>
               {isLoading && (
                 <Progress value={undefined} className="h-1" />
+              )}
+              {chartData && chartData.length > 0 && !isLoading && !error && (
+                <MiniChart data={chartData} color={color} />
               )}
               {filterInfo && (
                 <div className="text-xs text-gray-400">

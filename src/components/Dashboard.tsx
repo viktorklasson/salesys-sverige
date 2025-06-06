@@ -30,20 +30,43 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [avtalCount, setAvtalCount] = useState(0);
   const [avtalLoading, setAvtalLoading] = useState(false);
   const [avtalError, setAvtalError] = useState('');
+  const [avtalChartData, setAvtalChartData] = useState<Array<{ date: string; value: number }>>([]);
 
   const [samtalCount, setSamtalCount] = useState(0);
   const [samtalLoading, setSamtalLoading] = useState(false);
   const [samtalError, setSamtalError] = useState('');
+  const [samtalChartData, setSamtalChartData] = useState<Array<{ date: string; value: number }>>([]);
 
   const [ordrarCount, setOrdrarCount] = useState(0);
   const [ordrarLoading, setOrdrarLoading] = useState(false);
   const [ordrarError, setOrdrarError] = useState('');
+  const [ordrarChartData, setOrdrarChartData] = useState<Array<{ date: string; value: number }>>([]);
 
   // Dial groups state
   const [dialGroups, setDialGroups] = useState<DialGroup[]>([]);
   const [dialGroupSummaries, setDialGroupSummaries] = useState<Map<string, DialGroupSummary>>(new Map());
   const [dialGroupsLoading, setDialGroupsLoading] = useState(false);
   const [dialGroupsError, setDialGroupsError] = useState('');
+
+  // Helper function to get past 7 working days
+  const getPast7WorkingDays = (): string[] => {
+    const dates: string[] = [];
+    const today = new Date();
+    let currentDate = new Date(today);
+    let workingDaysCount = 0;
+
+    while (workingDaysCount < 7) {
+      const dayOfWeek = currentDate.getDay();
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dates.unshift(currentDate.toISOString().split('T')[0]);
+        workingDaysCount++;
+      }
+      currentDate.setDate(currentDate.getDate() - 1);
+    }
+
+    return dates;
+  };
 
   // Reset all state to initial values
   const resetAllState = () => {
@@ -53,14 +76,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setAvtalCount(0);
     setAvtalLoading(false);
     setAvtalError('');
+    setAvtalChartData([]);
     
     setSamtalCount(0);
     setSamtalLoading(false);
     setSamtalError('');
+    setSamtalChartData([]);
     
     setOrdrarCount(0);
     setOrdrarLoading(false);
     setOrdrarError('');
+    setOrdrarChartData([]);
     
     setDialGroups([]);
     setDialGroupSummaries(new Map());
@@ -79,16 +105,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     });
   };
 
-  // Load Avtal (signed contracts)
+  // Load Avtal (signed contracts) with 7-day trend
   const loadAvtal = async () => {
     setAvtalLoading(true);
     setAvtalError('');
     
     try {
+      // Get today's count
       const count = await salesysApi.getOffersCount({ 
         statuses: ['signed'] 
       });
       setAvtalCount(count);
+
+      // Get 7-day trend data
+      const workingDays = getPast7WorkingDays();
+      const chartDataPromises = workingDays.map(async (date) => {
+        const dayStart = new Date(date + 'T00:00:00.000+01:00');
+        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
+        
+        try {
+          const dayCount = await salesysApi.getOffersCount({
+            statuses: ['signed'],
+            from: dayStart.toISOString(),
+            to: dayEnd.toISOString()
+          });
+          return { date, value: dayCount };
+        } catch (error) {
+          return { date, value: 0 };
+        }
+      });
+
+      const chartData = await Promise.all(chartDataPromises);
+      setAvtalChartData(chartData);
+      
       console.log('Loaded avtal count:', count);
     } catch (error) {
       const errorMsg = 'Kunde inte ladda avtalsdata';
@@ -99,16 +148,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // Load Samtal (calls)
+  // Load Samtal (calls) with 7-day trend
   const loadSamtal = async () => {
     setSamtalLoading(true);
     setSamtalError('');
     
     try {
+      // Get today's count
       const response = await salesysApi.getCalls({
         count: 1 // We only need the count
       });
       setSamtalCount(response.total);
+
+      // Get 7-day trend data
+      const workingDays = getPast7WorkingDays();
+      const chartDataPromises = workingDays.map(async (date) => {
+        const dayStart = new Date(date + 'T00:00:00.000+01:00');
+        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
+        
+        try {
+          const dayResponse = await salesysApi.getCalls({
+            count: 1,
+            after: dayStart.toISOString(),
+            before: dayEnd.toISOString()
+          });
+          return { date, value: dayResponse.total };
+        } catch (error) {
+          return { date, value: 0 };
+        }
+      });
+
+      const chartData = await Promise.all(chartDataPromises);
+      setSamtalChartData(chartData);
+
       console.log('Loaded samtal count:', response.total);
     } catch (error) {
       const errorMsg = 'Kunde inte ladda samtalsdata';
@@ -119,16 +191,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
-  // Load Ordrar (orders)
+  // Load Ordrar (orders) with 7-day trend
   const loadOrdrar = async () => {
     setOrdrarLoading(true);
     setOrdrarError('');
     
     try {
+      // Get today's count
       const response = await salesysApi.getOrders({
         count: 1 // We only need the count
       });
       setOrdrarCount(response.total);
+
+      // Get 7-day trend data
+      const workingDays = getPast7WorkingDays();
+      const chartDataPromises = workingDays.map(async (date) => {
+        const dayStart = new Date(date + 'T00:00:00.000+01:00');
+        const dayEnd = new Date(date + 'T23:59:59.999+01:00');
+        
+        try {
+          const dayResponse = await salesysApi.getOrders({
+            count: 1,
+            from: dayStart.toISOString(),
+            to: dayEnd.toISOString()
+          });
+          return { date, value: dayResponse.total };
+        } catch (error) {
+          return { date, value: 0 };
+        }
+      });
+
+      const chartData = await Promise.all(chartDataPromises);
+      setOrdrarChartData(chartData);
+
       console.log('Loaded ordrar count:', response.total);
     } catch (error) {
       const errorMsg = 'Kunde inte ladda orderdata';
@@ -255,6 +350,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               filterInfo="Status: Signerad"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('avtal')}
+              chartData={avtalChartData}
             />
             
             <DashboardCard
@@ -266,6 +362,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               filterInfo="Alla samtal"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('samtal')}
+              chartData={samtalChartData}
             />
             
             <DashboardCard
@@ -277,6 +374,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               filterInfo="Alla ordrar"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('ordrar')}
+              chartData={ordrarChartData}
             />
           </div>
         </section>
