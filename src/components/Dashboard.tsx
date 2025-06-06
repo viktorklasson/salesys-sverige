@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut, Users, UserCheck, Phone } from 'lucide-react';
 import { salesysApi, DialGroup, DialGroupSummary, type Dashboard } from '@/services/salesysApi';
 import DashboardCard from './DashboardCard';
 import DialGroupCard from './DialGroupCard';
@@ -22,11 +21,15 @@ interface DashboardProps {
   onLogout: () => void;
 }
 
+type MainView = 'dashboard' | 'statistics' | 'dashboard-detail';
+type SectionView = 'användare' | 'team' | 'ringlistor';
+
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const { toast } = useToast();
   
   // View state
-  const [currentView, setCurrentView] = useState<'dashboard' | 'statistics' | 'dashboard-detail'>('dashboard');
+  const [currentView, setCurrentView] = useState<MainView>('dashboard');
+  const [currentSection, setCurrentSection] = useState<SectionView>('användare');
   const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar'>('avtal');
   const [selectedDashboard, setSelectedDashboard] = useState<Dashboard | null>(null);
   
@@ -489,6 +492,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setCurrentView('dashboard-detail');
   };
 
+  const handleSectionChange = (section: SectionView) => {
+    setCurrentSection(section);
+  };
+
   if (currentView === 'statistics') {
     return (
       <StatisticsView 
@@ -627,51 +634,104 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           )}
         </section>
 
-        {/* Dial Groups Section */}
+        {/* Navigation Section */}
         <section>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-light text-gray-700">Ringgrupper</h2>
-            <Badge variant="outline" className="text-xs">
-              {dialGroups.length} grupper
-            </Badge>
+            <h2 className="text-lg font-light text-gray-700">Organisationsvy</h2>
           </div>
           
-          {dialGroupsError && (
-            <Card className="border-red-100 bg-red-50 rounded-2xl">
-              <CardContent className="pt-6">
-                <div className="text-sm text-red-600">{dialGroupsError}</div>
+          {/* Navigation Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <Button
+              variant={currentSection === 'användare' ? 'default' : 'outline'}
+              onClick={() => handleSectionChange('användare')}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Användare
+            </Button>
+            <Button
+              variant={currentSection === 'team' ? 'default' : 'outline'}
+              onClick={() => handleSectionChange('team')}
+              className="flex items-center gap-2"
+            >
+              <UserCheck className="h-4 w-4" />
+              Team
+            </Button>
+            <Button
+              variant={currentSection === 'ringlistor' ? 'default' : 'outline'}
+              onClick={() => handleSectionChange('ringlistor')}
+              className="flex items-center gap-2"
+            >
+              <Phone className="h-4 w-4" />
+              Ringlistor
+            </Button>
+          </div>
+
+          {/* Content based on selected section */}
+          {currentSection === 'ringlistor' && (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-md font-light text-gray-600">Ringgrupper</h3>
+                <Badge variant="outline" className="text-xs">
+                  {dialGroups.length} grupper
+                </Badge>
+              </div>
+              
+              {dialGroupsError && (
+                <Card className="border-red-100 bg-red-50 rounded-2xl">
+                  <CardContent className="pt-6">
+                    <div className="text-sm text-red-600">{dialGroupsError}</div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {dialGroupsLoading ? (
+                  // Loading skeletons
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
+                      <CardContent className="pt-6 space-y-3">
+                        <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
+                        <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
+                        <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
+                        <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  dialGroups.map((group) => (
+                    <DialGroupCard
+                      key={group.id}
+                      dialGroup={group}
+                      summary={dialGroupSummaries.get(group.id)}
+                    />
+                  ))
+                )}
+              </div>
+              
+              {!dialGroupsLoading && dialGroups.length === 0 && !dialGroupsError && (
+                <Card className="bg-white rounded-2xl border-0 shadow-sm">
+                  <CardContent className="pt-6 text-center text-gray-500">
+                    Inga ringgrupper hittades
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {currentSection === 'användare' && (
+            <Card className="bg-white rounded-2xl border-0 shadow-sm">
+              <CardContent className="pt-6 text-center text-gray-500">
+                Användarvy kommer snart
               </CardContent>
             </Card>
           )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dialGroupsLoading ? (
-              // Loading skeletons
-              Array.from({ length: 6 }).map((_, index) => (
-                <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
-                  <CardContent className="pt-6 space-y-3">
-                    <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
-                    <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
-                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
-                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              dialGroups.map((group) => (
-                <DialGroupCard
-                  key={group.id}
-                  dialGroup={group}
-                  summary={dialGroupSummaries.get(group.id)}
-                />
-              ))
-            )}
-          </div>
-          
-          {!dialGroupsLoading && dialGroups.length === 0 && !dialGroupsError && (
+
+          {currentSection === 'team' && (
             <Card className="bg-white rounded-2xl border-0 shadow-sm">
               <CardContent className="pt-6 text-center text-gray-500">
-                Inga ringgrupper hittades
+                Teamvy kommer snart
               </CardContent>
             </Card>
           )}

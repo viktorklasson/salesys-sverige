@@ -358,10 +358,10 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
                 {getTitle()} - {getRangeLabel()}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-2 sm:px-6">
               <div className="space-y-6">
                 {/* Summary Stats */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 px-4 sm:px-0">
                   <div>
                     <div className="text-3xl font-light" style={{ color: getColor() }}>
                       {totalCount.toLocaleString('sv-SE')}
@@ -382,9 +382,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
                 {/* Chart */}
                 {data.length > 0 && (
-                  <div className="h-80">
+                  <div className="h-80 -mx-2 sm:mx-0">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={data}>
+                      <BarChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: timeRange === 'today' ? 60 : 30 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="label"
@@ -392,8 +392,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
                           angle={timeRange === 'today' ? -45 : 0}
                           textAnchor={timeRange === 'today' ? 'end' : 'middle'}
                           height={timeRange === 'today' ? 60 : 30}
+                          interval={0}
                         />
-                        <YAxis tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 12 }} width={40} />
                         <Tooltip 
                           formatter={(value: any) => [value, getTitle()]}
                           labelFormatter={(label: string) => `${timeRange === 'today' ? 'Klockan' : 'Datum'}: ${label}`}
