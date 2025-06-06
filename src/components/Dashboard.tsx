@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -289,32 +288,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   if (currentView === 'welcome') {
     return (
       <div className="min-h-screen bg-white">
-        {/* Header */}
-        <div className="bg-gray-50 py-4 border-b">
-          <div className="container mx-auto px-4 flex justify-between items-center">
-            <h1 className="text-2xl font-light text-gray-800">Hej Viktor</h1>
-            <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={handleDateSelect}
-                    initialFocus
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-        </div>
-
         <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-light text-gray-800">Hej Viktor</h1>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  initialFocus
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Date Info */}
           <div className="mb-6">
             <p className="text-gray-600">
@@ -407,9 +401,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   if (currentView === 'section') {
     return (
       <div className="min-h-screen bg-white">
-        {/* Header */}
-        <div className="bg-gray-50 py-4 border-b">
-          <div className="container mx-auto px-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-light text-gray-800">
               {activeSection === 'ringlistor' ? 'Ringlistor' : 
                activeSection === 'anvandare' ? 'Användare' : 'Team'}
@@ -418,9 +411,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               Tillbaka till översikt
             </Button>
           </div>
-        </div>
 
-        <div className="container mx-auto px-4 py-6">
           {activeSection === 'ringlistor' && (
             <Card className="bg-white border-0 shadow-sm rounded-2xl">
               <CardHeader>
@@ -502,9 +493,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   // Dashboard view
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-gray-50 py-4 border-b">
-        <div className="container mx-auto px-4 flex justify-between items-center">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-light text-gray-800">
             {selectedDashboard?.name || 'Dashboard'}
           </h1>
@@ -512,9 +502,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             Tillbaka till översikt
           </Button>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-6">
         {loadingDashboardResults ? (
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
             <CardContent className="pt-6">
