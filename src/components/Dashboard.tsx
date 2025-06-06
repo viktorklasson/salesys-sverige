@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings } from 'lucide-react';
 import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -43,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -50,7 +52,9 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
+  const [currentView, setCurrentView] = useState<'welcome' | 'dashboard'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [avtalsData, setAvtalsData] = useState<Array<{ date: string; value: number }>>([]);
   const [samtalData, setSamtalData] = useState<Array<{ date: string; value: number }>>([]);
   const [ordrarData, setOrdrarData] = useState<Array<{ date: string; value: number }>>([]);
@@ -61,20 +65,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const [loadingDialGroupSummaries, setLoadingDialGroupSummaries] = useState(true);
   const [dialGroupSummariesError, setDialGroupSummariesError] = useState<string | null>(null);
 
-  // Helper function to get today's date range in Stockholm timezone
-  const getTodayStockholmRange = (): { from: string; to: string } => {
-    const now = new Date();
-    const stockholmTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
+  // Helper function to get date range for a specific date
+  const getDateRange = (date: Date): { from: string; to: string } => {
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
     
-    const today = new Date(stockholmTime);
-    today.setHours(0, 0, 0, 0);
-    
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(targetDate.getDate() + 1);
 
     return {
-      from: today.toISOString().split('T')[0], // YYYY-MM-DD format
-      to: tomorrow.toISOString().split('T')[0]  // YYYY-MM-DD format
+      from: targetDate.toISOString().split('T')[0],
+      to: nextDay.toISOString().split('T')[0]
     };
   };
 
@@ -83,7 +84,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     const hourlyMap = new Map<string, number>();
     
     data.forEach(item => {
-      // Convert UTC time to Stockholm time for display
       const utcDate = new Date(item.intervalStart);
       const stockholmDate = new Date(utcDate.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
       const hour = stockholmDate.getHours();
@@ -93,7 +93,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       hourlyMap.set(hourKey, currentCount + item.count);
     });
 
-    // Create array for all 24 hours
     const result = [];
     for (let hour = 0; hour < 24; hour++) {
       const hourKey = `${hour.toString().padStart(2, '0')}:00`;
@@ -106,23 +105,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return result;
   };
 
-  // Load statistics data
+  // Load statistics data based on selected date
   useEffect(() => {
     const loadStatistics = async () => {
       if (!salesysApi.getBearerToken()) return;
 
-      console.log('Preloading statistics data...');
-      const { from, to } = getTodayStockholmRange();
+      console.log('Loading statistics data for date:', selectedDate);
+      const { from, to } = getDateRange(selectedDate);
 
       try {
-        // Load hourly statistics for today
         const [offerStats, callStats, orderStats] = await Promise.all([
           salesysApi.getOfferStatistics({ from, to, fixedIntervalType: 'hour' }),
           salesysApi.getCallStatisticsHourly({ from, to, fixedIntervalType: 'hour' }),
           salesysApi.getOrderStatisticsHourly({ from, to, fixedIntervalType: 'hour' })
         ]);
 
-        // Aggregate and convert data
         const avtalsData = aggregateHourlyData(offerStats);
         const samtalData = aggregateHourlyData(callStats);
         const ordrarData = aggregateHourlyData(orderStats);
@@ -143,10 +140,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadStatistics();
-  }, []);
+  }, [selectedDate]);
 
-  // Load dial groups
+  // Load dial groups only when in dashboard view
   useEffect(() => {
+    if (currentView !== 'dashboard') return;
+
     const loadDialGroups = async () => {
       setLoadingDialGroups(true);
       setDialGroupsError(null);
@@ -167,13 +166,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadDialGroups();
-  }, []);
+  }, [currentView]);
 
   // Load dial group summaries
   useEffect(() => {
-    const loadDialGroupSummaries = async () => {
-      if (dialGroups.length === 0) return;
+    if (dialGroups.length === 0 || currentView !== 'dashboard') return;
 
+    const loadDialGroupSummaries = async () => {
       setLoadingDialGroupSummaries(true);
       setDialGroupSummariesError(null);
 
@@ -195,18 +194,102 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadDialGroupSummaries();
-  }, [dialGroups]);
+  }, [dialGroups, currentView]);
 
   const getTotalFromHourlyData = (data: Array<{ date: string; value: number }>): number => {
     return data.reduce((sum, item) => sum + item.value, 0);
   };
 
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
+
+  if (currentView === 'welcome') {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="bg-gray-50 py-4 border-b">
+          <div className="container mx-auto px-4 flex justify-between items-center">
+            <h1 className="text-2xl font-light text-gray-800">Hej Viktor</h1>
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+        </div>
+
+        <div className="container mx-auto px-4 py-6">
+          {/* Date Info */}
+          <div className="mb-6">
+            <p className="text-gray-600">
+              Visar data för: {format(selectedDate, "d MMMM yyyy", { locale: sv })}
+            </p>
+          </div>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <DashboardCard
+              title="Avtal signerade"
+              count={getTotalFromHourlyData(avtalsData)}
+              isLoading={!avtalsData.length}
+              color="green"
+              chartData={avtalsData}
+              onClick={() => onStatisticsClick('avtal')}
+            />
+            <DashboardCard
+              title="Samtal genomförda"
+              count={getTotalFromHourlyData(samtalData)}
+              isLoading={!samtalData.length}
+              color="blue"
+              chartData={samtalData}
+              onClick={() => onStatisticsClick('samtal')}
+            />
+            <DashboardCard
+              title="Ordrar skapade"
+              count={getTotalFromHourlyData(ordrarData)}
+              isLoading={!ordrarData.length}
+              color="purple"
+              chartData={ordrarData}
+              onClick={() => onStatisticsClick('ordrar')}
+            />
+          </div>
+
+          {/* Button to enter dashboard */}
+          <div className="text-center">
+            <Button onClick={() => setCurrentView('dashboard')}>
+              Gå till Dashboard
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-gray-50 py-4 border-b">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 flex justify-between items-center">
           <h1 className="text-2xl font-light text-gray-800">Dashboard</h1>
+          <Button variant="outline" onClick={() => setCurrentView('welcome')}>
+            Tillbaka till översikt
+          </Button>
         </div>
       </div>
 
@@ -264,58 +347,55 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
         </div>
 
         {activeSection === 'ringlistor' && (
-          <>
-            {/* Dashboard Stats Cards */}
-            <Card className="bg-white border-0 shadow-sm rounded-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-light">Ringlistor</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loadingDialGroups ? (
-                  <div className="animate-pulse space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <div className="bg-gray-200 h-4 w-32 rounded" />
-                        <div className="bg-gray-200 h-4 w-12 rounded" />
-                      </div>
-                    ))}
-                  </div>
-                ) : dialGroupsError ? (
-                  <div className="text-red-500">{dialGroupsError}</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">ID</TableHead>
-                          <TableHead>Namn</TableHead>
-                          <TableHead>Kontakter</TableHead>
-                          <TableHead>Reserverade</TableHead>
-                          <TableHead>Skippade</TableHead>
-                          <TableHead>Karantän</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {dialGroups.map((group) => {
-                          const summary = dialGroupSummaries.find(s => s.dialGroupId === group.id)?.summary;
-                          return (
-                            <TableRow key={group.id}>
-                              <TableCell className="font-medium">{group.serialId}</TableCell>
-                              <TableCell>{group.name}</TableCell>
-                              <TableCell>{summary?.contactCount ?? 'N/A'}</TableCell>
-                              <TableCell>{summary?.reservedContactCount ?? 'N/A'}</TableCell>
-                              <TableCell>{summary?.skippedContactCount ?? 'N/A'}</TableCell>
-                              <TableCell>{summary?.quarantinedContactCount ?? 'N/A'}</TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-light">Ringlistor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingDialGroups ? (
+                <div className="animate-pulse space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="bg-gray-200 h-4 w-32 rounded" />
+                      <div className="bg-gray-200 h-4 w-12 rounded" />
+                    </div>
+                  ))}
+                </div>
+              ) : dialGroupsError ? (
+                <div className="text-red-500">{dialGroupsError}</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[100px]">ID</TableHead>
+                        <TableHead>Namn</TableHead>
+                        <TableHead>Kontakter</TableHead>
+                        <TableHead>Reserverade</TableHead>
+                        <TableHead>Skippade</TableHead>
+                        <TableHead>Karantän</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dialGroups.map((group) => {
+                        const summary = dialGroupSummaries.find(s => s.dialGroupId === group.id)?.summary;
+                        return (
+                          <TableRow key={group.id}>
+                            <TableCell className="font-medium">{group.serialId}</TableCell>
+                            <TableCell>{group.name}</TableCell>
+                            <TableCell>{summary?.contactCount ?? 'N/A'}</TableCell>
+                            <TableCell>{summary?.reservedContactCount ?? 'N/A'}</TableCell>
+                            <TableCell>{summary?.skippedContactCount ?? 'N/A'}</TableCell>
+                            <TableCell>{summary?.quarantinedContactCount ?? 'N/A'}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {activeSection === 'anvandare' && (
