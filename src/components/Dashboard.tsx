@@ -110,6 +110,40 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return result;
   };
 
+  // Helper function to check if a date is today
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    const targetDate = new Date(date);
+    return targetDate.toDateString() === today.toDateString();
+  };
+
+  // Helper function to crop chart data to only show hours with data
+  const cropChartData = (data: Array<{ date: string; value: number }>): Array<{ date: string; value: number }> => {
+    // Find first and last hour with data
+    let firstHourWithData = -1;
+    let lastHourWithData = -1;
+
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].value > 0) {
+        if (firstHourWithData === -1) {
+          firstHourWithData = i;
+        }
+        lastHourWithData = i;
+      }
+    }
+
+    // If no data found, return empty array
+    if (firstHourWithData === -1) {
+      return [];
+    }
+
+    // Add some padding around the data (1 hour before first, 1 hour after last)
+    const startIndex = Math.max(0, firstHourWithData - 1);
+    const endIndex = Math.min(data.length - 1, lastHourWithData + 1);
+
+    return data.slice(startIndex, endIndex + 1);
+  };
+
   // Load statistics data based on selected date (only for welcome screen)
   useEffect(() => {
     if (currentView !== 'welcome') return;
@@ -286,6 +320,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   };
 
   if (currentView === 'welcome') {
+    const isSelectedDateToday = isToday(selectedDate);
+    const croppedAvtalsData = cropChartData(avtalsData);
+    const croppedSamtalData = cropChartData(samtalData);
+    const croppedOrdrarData = cropChartData(ordrarData);
+
     return (
       <div className="min-h-screen bg-white">
         <div className="container mx-auto px-4 py-6">
@@ -318,30 +357,47 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <DashboardCard
-              title="Avtal signerade"
-              count={getTotalFromHourlyData(avtalsData)}
-              isLoading={!avtalsData.length}
-              color="green"
-              chartData={avtalsData}
-              onClick={() => onStatisticsClick('avtal')}
-            />
-            <DashboardCard
-              title="Samtal genomförda"
-              count={getTotalFromHourlyData(samtalData)}
-              isLoading={!samtalData.length}
-              color="blue"
-              chartData={samtalData}
-              onClick={() => onStatisticsClick('samtal')}
-            />
-            <DashboardCard
-              title="Ordrar skapade"
-              count={getTotalFromHourlyData(ordrarData)}
-              isLoading={!ordrarData.length}
-              color="purple"
-              chartData={ordrarData}
-              onClick={() => onStatisticsClick('ordrar')}
-            />
+            <div className="relative">
+              <DashboardCard
+                title="Avtal signerade"
+                count={getTotalFromHourlyData(avtalsData)}
+                isLoading={!avtalsData.length}
+                color="green"
+                chartData={croppedAvtalsData}
+                onClick={() => onStatisticsClick('avtal')}
+              />
+              {isSelectedDateToday && (
+                <div className="absolute top-3 right-12 w-2 h-2 bg-green-500 rounded-full animate-pulse opacity-75" />
+              )}
+            </div>
+            
+            <div className="relative">
+              <DashboardCard
+                title="Samtal genomförda"
+                count={getTotalFromHourlyData(samtalData)}
+                isLoading={!samtalData.length}
+                color="blue"
+                chartData={croppedSamtalData}
+                onClick={() => onStatisticsClick('samtal')}
+              />
+              {isSelectedDateToday && (
+                <div className="absolute top-3 right-12 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-75" />
+              )}
+            </div>
+            
+            <div className="relative">
+              <DashboardCard
+                title="Ordrar skapade"
+                count={getTotalFromHourlyData(ordrarData)}
+                isLoading={!ordrarData.length}
+                color="purple"
+                chartData={croppedOrdrarData}
+                onClick={() => onStatisticsClick('ordrar')}
+              />
+              {isSelectedDateToday && (
+                <div className="absolute top-3 right-12 w-2 h-2 bg-purple-500 rounded-full animate-pulse opacity-75" />
+              )}
+            </div>
           </div>
 
           {/* Navigation Buttons */}
