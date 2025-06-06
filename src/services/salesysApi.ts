@@ -1,4 +1,3 @@
-
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -24,6 +23,13 @@
  * DIAL GROUPS:
  * - GET https://app.salesys.se/api/dial/dial-groups-v2?offset=0&count=100&sortBy=serialId&sortOrder=desc
  * - GET https://app.salesys.se/api/dial/dial-group-contacts-v1/summaries?dialGroupIds=6814b3950483cf8a7328ec6d
+ * 
+ * STATISTICS:
+ * - GET https://app.salesys.se/api/offers/statistics-v1/own/issue_1238_2?from=2025-04-01&to=2025-05-13&fixedIntervalType=day
+ * 
+ * USERS & TEAMS:
+ * - GET https://app.salesys.se/api/users/users-v1
+ * - GET https://app.salesys.se/api/users/teams-v1
  */
 
 const PROXY_URL = 'https://salesys.se/api/tools/proxy.php';
@@ -142,6 +148,51 @@ export interface Tag {
   name: string;
   color?: string;
   isLocking?: boolean;
+}
+
+export interface StatisticsData {
+  intervalStart: string;
+  intervalEnd: string;
+  userId: string;
+  tagId: string | null;
+  projectId: string | null;
+  count: number;
+  totalDuration: number;
+  connectedDuration: number;
+  unansweredCount: number;
+  connectedCount: number;
+}
+
+export interface User {
+  id: string;
+  type: string;
+  organizationId: string;
+  rights: string[];
+  superRights: string[];
+  teamId: string;
+  supervisedTeamIds: string[];
+  roleIds: string[];
+  fullName: string;
+  username: string;
+  createdByUserId: string;
+  passwordResets: any[];
+  phone: string | null;
+  active: boolean;
+  mfa: {
+    enabled: boolean;
+    smsRecipient: string | null;
+  };
+  preferences: any;
+  createdAt: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  color: string;
+  rights: string[];
+  isLocked: boolean;
+  calendarAccess: any[];
 }
 
 class SalesysApiService {
@@ -405,6 +456,35 @@ class SalesysApiService {
 
     const url = `https://app.salesys.se/api/dial/dial-group-contacts-v1/summaries?${queryParams}`;
     return this.makeRequest<DialGroupSummary[]>(url);
+  }
+
+  // Statistics API
+  async getStatistics(params: {
+    endpoint: string;
+    from: string;
+    to: string;
+    fixedIntervalType?: 'day' | 'week' | 'month';
+  }): Promise<StatisticsData[]> {
+    const queryParams = new URLSearchParams({
+      from: params.from,
+      to: params.to,
+      fixedIntervalType: params.fixedIntervalType || 'day'
+    });
+
+    const url = `https://app.salesys.se/api/offers/statistics-v1/own/${params.endpoint}?${queryParams}`;
+    return this.makeRequest<StatisticsData[]>(url);
+  }
+
+  // Users API
+  async getUsers(): Promise<User[]> {
+    const url = 'https://app.salesys.se/api/users/users-v1';
+    return this.makeRequest<User[]>(url);
+  }
+
+  // Teams API
+  async getTeams(): Promise<Team[]> {
+    const url = 'https://app.salesys.se/api/users/teams-v1';
+    return this.makeRequest<Team[]>(url);
   }
 }
 

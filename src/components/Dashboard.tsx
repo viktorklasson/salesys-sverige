@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Settings, LogOut } from 'lucide-react';
 import { salesysApi, DialGroup, DialGroupSummary } from '@/services/salesysApi';
 import DashboardCard from './DashboardCard';
 import DialGroupCard from './DialGroupCard';
+import StatisticsView from './StatisticsView';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -21,6 +21,10 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const { toast } = useToast();
+  
+  // View state
+  const [currentView, setCurrentView] = useState<'dashboard' | 'statistics'>('dashboard');
+  const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar'>('avtal');
   
   // Today's stats state
   const [avtalCount, setAvtalCount] = useState(0);
@@ -169,6 +173,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     onLogout();
   };
 
+  const handleCardClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
+    setSelectedStatType(statType);
+    setCurrentView('statistics');
+  };
+
+  const handleBackToDashboard = () => {
+    setCurrentView('dashboard');
+  };
+
+  if (currentView === 'statistics') {
+    return (
+      <StatisticsView 
+        statType={selectedStatType} 
+        onBack={handleBackToDashboard} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Minimal Header */}
@@ -205,9 +227,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={avtalLoading}
               error={avtalError}
               color="green"
-              onRefresh={loadAvtal}
               filterInfo="Status: Signerad"
-              className="bg-white border-0 shadow-sm rounded-2xl"
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleCardClick('avtal')}
             />
             
             <DashboardCard
@@ -216,9 +238,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={samtalLoading}
               error={samtalError}
               color="blue"
-              onRefresh={loadSamtal}
               filterInfo="Alla samtal"
-              className="bg-white border-0 shadow-sm rounded-2xl"
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleCardClick('samtal')}
             />
             
             <DashboardCard
@@ -227,9 +249,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={ordrarLoading}
               error={ordrarError}
               color="purple"
-              onRefresh={loadOrdrar}
               filterInfo="Alla ordrar"
-              className="bg-white border-0 shadow-sm rounded-2xl"
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleCardClick('ordrar')}
             />
           </div>
         </section>

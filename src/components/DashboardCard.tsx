@@ -1,10 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Settings, RefreshCw, Filter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DashboardCardProps {
@@ -13,10 +10,9 @@ interface DashboardCardProps {
   isLoading: boolean;
   error?: string;
   color?: 'blue' | 'green' | 'purple';
-  onRefresh?: () => void;
-  onSettings?: () => void;
   filterInfo?: string;
   className?: string;
+  onClick?: () => void;
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({
@@ -25,10 +21,9 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   isLoading,
   error,
   color = 'blue',
-  onRefresh,
-  onSettings,
   filterInfo,
-  className
+  className,
+  onClick
 }) => {
   const countColors = {
     blue: 'text-[#1665c0]',
@@ -37,29 +32,19 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   };
 
   return (
-    <Card className={cn(
-      'transition-all duration-200 hover:shadow-md',
-      className
-    )}>
+    <Card 
+      className={cn(
+        'transition-all duration-200 hover:shadow-md',
+        onClick && 'cursor-pointer',
+        className
+      )}
+      onClick={onClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-light text-gray-600">
             {title}
           </CardTitle>
-          {onRefresh && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 opacity-50 hover:opacity-100"
-              onClick={onRefresh}
-              disabled={isLoading}
-            >
-              <RefreshCw className={cn(
-                'h-3 w-3',
-                isLoading && 'animate-spin'
-              )} />
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardContent>
