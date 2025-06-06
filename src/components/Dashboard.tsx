@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [dialGroupSummaries, setDialGroupSummaries] = useState<Map<string, DialGroupSummary>>(new Map());
   const [dialGroupsLoading, setDialGroupsLoading] = useState(false);
   const [dialGroupsError, setDialGroupsError] = useState('');
+
+  // Reset all state to initial values
+  const resetAllState = () => {
+    setCurrentView('dashboard');
+    setSelectedStatType('avtal');
+    
+    setAvtalCount(0);
+    setAvtalLoading(false);
+    setAvtalError('');
+    
+    setSamtalCount(0);
+    setSamtalLoading(false);
+    setSamtalError('');
+    
+    setOrdrarCount(0);
+    setOrdrarLoading(false);
+    setOrdrarError('');
+    
+    setDialGroups([]);
+    setDialGroupSummaries(new Map());
+    setDialGroupsLoading(false);
+    setDialGroupsError('');
+  };
 
   // Get today's date in Swedish format
   const getTodayDateString = (): string => {
@@ -172,6 +194,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const handleLogout = () => {
     localStorage.removeItem('salesys_bearer_token');
     salesysApi.setBearerToken(''); // Clear the cached token in the service
+    resetAllState(); // Reset all component state
     onLogout();
   };
 
