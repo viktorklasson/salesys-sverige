@@ -85,20 +85,46 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
     try {
       const { from, to } = getDateRange();
       
-      // Load all required data in parallel
-      const [statisticsData, usersData, teamsData] = await Promise.all([
-        salesysApi.getStatistics({
-          endpoint: getApiEndpoint(),
-          from,
-          to,
-          fixedIntervalType: 'day'
-        }),
+      // Load users and teams data in parallel
+      const [usersData, teamsData] = await Promise.all([
         salesysApi.getUsers(),
         salesysApi.getTeams()
       ]);
 
       setUsers(usersData);
       setTeams(teamsData);
+
+      // Load statistics data based on stat type
+      let statisticsData: StatisticsData[];
+      
+      switch (statType) {
+        case 'avtal':
+          statisticsData = await salesysApi.getStatistics({
+            endpoint: getApiEndpoint(),
+            from,
+            to,
+            fixedIntervalType: 'day'
+          });
+          break;
+        case 'samtal':
+          statisticsData = await salesysApi.getCallStatistics({
+            endpoint: getApiEndpoint(),
+            from,
+            to,
+            fixedIntervalType: 'day'
+          });
+          break;
+        case 'ordrar':
+          statisticsData = await salesysApi.getOrderStatistics({
+            endpoint: getApiEndpoint(),
+            from,
+            to,
+            fixedIntervalType: 'day'
+          });
+          break;
+        default:
+          statisticsData = [];
+      }
 
       // Process chart data
       const chartMap = new Map<string, number>();

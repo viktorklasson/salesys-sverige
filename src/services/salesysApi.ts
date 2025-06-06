@@ -26,6 +26,8 @@
  * 
  * STATISTICS:
  * - GET https://app.salesys.se/api/offers/statistics-v1/own/issue_1238_2?from=2025-04-01&to=2025-05-13&fixedIntervalType=day
+ * - GET https://app.salesys.se/api/dial/statistics-v1/own/issue_1238_2?from=2025-05-10&to=2025-05-15&fixedIntervalType=day
+ * - GET https://app.salesys.se/api/orders/statistics-v1/own/issue_1238_2?from=2025-05-30&to=2025-06-03&fixedIntervalType=day
  * 
  * USERS & TEAMS:
  * - GET https://app.salesys.se/api/users/users-v1
@@ -157,10 +159,11 @@ export interface StatisticsData {
   tagId: string | null;
   projectId: string | null;
   count: number;
-  totalDuration: number;
-  connectedDuration: number;
-  unansweredCount: number;
-  connectedCount: number;
+  totalDuration?: number;
+  connectedDuration?: number;
+  unansweredCount?: number;
+  connectedCount?: number;
+  productId?: string | null;
 }
 
 export interface User {
@@ -472,6 +475,40 @@ class SalesysApiService {
     });
 
     const url = `https://app.salesys.se/api/offers/statistics-v1/own/${params.endpoint}?${queryParams}`;
+    return this.makeRequest<StatisticsData[]>(url);
+  }
+
+  // Call Statistics API
+  async getCallStatistics(params: {
+    endpoint: string;
+    from: string;
+    to: string;
+    fixedIntervalType?: 'day' | 'week' | 'month';
+  }): Promise<StatisticsData[]> {
+    const queryParams = new URLSearchParams({
+      from: params.from,
+      to: params.to,
+      fixedIntervalType: params.fixedIntervalType || 'day'
+    });
+
+    const url = `https://app.salesys.se/api/dial/statistics-v1/own/${params.endpoint}?${queryParams}`;
+    return this.makeRequest<StatisticsData[]>(url);
+  }
+
+  // Order Statistics API
+  async getOrderStatistics(params: {
+    endpoint: string;
+    from: string;
+    to: string;
+    fixedIntervalType?: 'day' | 'week' | 'month';
+  }): Promise<StatisticsData[]> {
+    const queryParams = new URLSearchParams({
+      from: params.from,
+      to: params.to,
+      fixedIntervalType: params.fixedIntervalType || 'day'
+    });
+
+    const url = `https://app.salesys.se/api/orders/statistics-v1/own/${params.endpoint}?${queryParams}`;
     return this.makeRequest<StatisticsData[]>(url);
   }
 
