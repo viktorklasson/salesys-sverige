@@ -636,6 +636,11 @@ class SalesysApiService {
     const url = `https://app.salesys.se/api/users/dashboards-v1/${dashboardId}/results`;
     return this.makeRequest<DashboardResult[]>(url, 'POST');
   }
+
+  async updateDashboardGroupBy(dashboardId: string, groupBy: 'user' | 'team' | 'leadList' | null): Promise<void> {
+    const url = `https://app.salesys.se/api/users/dashboards-v1/${dashboardId}`;
+    await this.makeRequest(url, 'PUT', { groupBy });
+  }
 }
 
 export const salesysApi = new SalesysApiService();
