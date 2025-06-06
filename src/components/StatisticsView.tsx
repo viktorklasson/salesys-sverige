@@ -125,11 +125,17 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           statisticsData = [];
       }
 
+      // Filter out SaleSys data (users that cannot be matched)
+      const filteredStatisticsData = statisticsData.filter(item => {
+        const user = usersData.find(u => u.id === item.userId);
+        return user !== undefined; // Only keep data for users that exist
+      });
+
       // Process chart data - converting to line chart format
       const userDataMap = new Map<string, { [key: string]: number }>();
       const dateSet = new Set<string>();
 
-      statisticsData.forEach(item => {
+      filteredStatisticsData.forEach(item => {
         const date = item.intervalStart.split('T')[0];
         const user = usersData.find(u => u.id === item.userId);
         const userName = user?.fullName || 'Okänd användare';
@@ -175,7 +181,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         connectedCount: number;
       }>();
 
-      statisticsData.forEach(item => {
+      filteredStatisticsData.forEach(item => {
         const existing = userStatsMap.get(item.userId) || {
           totalCount: 0,
           totalDuration: 0,
