@@ -144,6 +144,39 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return data.slice(startIndex, endIndex + 1);
   };
 
+  // Helper function to get relative date text
+  const getRelativeDateText = (date: Date): string => {
+    const today = new Date();
+    const targetDate = new Date(date);
+    
+    // Check if it's today
+    if (targetDate.toDateString() === today.toDateString()) {
+      return "Idag";
+    }
+    
+    // Check if it's yesterday
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (targetDate.toDateString() === yesterday.toDateString()) {
+      return "Igår";
+    }
+    
+    // Check if it's tomorrow
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    if (targetDate.toDateString() === tomorrow.toDateString()) {
+      return "Imorgon";
+    }
+    
+    // Check if it's the same year
+    if (targetDate.getFullYear() === today.getFullYear()) {
+      return format(targetDate, "d MMMM", { locale: sv });
+    }
+    
+    // Different year, include year
+    return format(targetDate, "d MMMM yyyy", { locale: sv });
+  };
+
   // Load statistics data based on selected date (only for welcome screen)
   useEffect(() => {
     if (currentView !== 'welcome') return;
@@ -329,10 +362,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       <div className="min-h-screen bg-white">
         <div className="container mx-auto px-4 py-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-light text-gray-800">Hej Viktor</h1>
+            <h1 className="text-3xl font-light text-gray-800">Hej Viktor</h1>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="ghost" size="icon">
                   <Settings className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
@@ -351,53 +384,41 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
           {/* Date Info */}
           <div className="mb-6">
             <p className="text-gray-600">
-              Visar data för: {format(selectedDate, "d MMMM yyyy", { locale: sv })}
+              {getRelativeDateText(selectedDate)}
             </p>
           </div>
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="relative">
-              <DashboardCard
-                title="Avtal signerade"
-                count={getTotalFromHourlyData(avtalsData)}
-                isLoading={!avtalsData.length}
-                color="green"
-                chartData={croppedAvtalsData}
-                onClick={() => onStatisticsClick('avtal')}
-              />
-              {isSelectedDateToday && (
-                <div className="absolute top-3 right-12 w-2 h-2 bg-green-500 rounded-full animate-pulse opacity-75" />
-              )}
-            </div>
+            <DashboardCard
+              title="Avtal signerade"
+              count={getTotalFromHourlyData(avtalsData)}
+              isLoading={!avtalsData.length}
+              color="green"
+              chartData={croppedAvtalsData}
+              onClick={() => onStatisticsClick('avtal')}
+              showLiveDot={isSelectedDateToday}
+            />
             
-            <div className="relative">
-              <DashboardCard
-                title="Samtal genomförda"
-                count={getTotalFromHourlyData(samtalData)}
-                isLoading={!samtalData.length}
-                color="blue"
-                chartData={croppedSamtalData}
-                onClick={() => onStatisticsClick('samtal')}
-              />
-              {isSelectedDateToday && (
-                <div className="absolute top-3 right-12 w-2 h-2 bg-blue-500 rounded-full animate-pulse opacity-75" />
-              )}
-            </div>
+            <DashboardCard
+              title="Samtal genomförda"
+              count={getTotalFromHourlyData(samtalData)}
+              isLoading={!samtalData.length}
+              color="blue"
+              chartData={croppedSamtalData}
+              onClick={() => onStatisticsClick('samtal')}
+              showLiveDot={isSelectedDateToday}
+            />
             
-            <div className="relative">
-              <DashboardCard
-                title="Ordrar skapade"
-                count={getTotalFromHourlyData(ordrarData)}
-                isLoading={!ordrarData.length}
-                color="purple"
-                chartData={croppedOrdrarData}
-                onClick={() => onStatisticsClick('ordrar')}
-              />
-              {isSelectedDateToday && (
-                <div className="absolute top-3 right-12 w-2 h-2 bg-purple-500 rounded-full animate-pulse opacity-75" />
-              )}
-            </div>
+            <DashboardCard
+              title="Ordrar skapade"
+              count={getTotalFromHourlyData(ordrarData)}
+              isLoading={!ordrarData.length}
+              color="purple"
+              chartData={croppedOrdrarData}
+              onClick={() => onStatisticsClick('ordrar')}
+              showLiveDot={isSelectedDateToday}
+            />
           </div>
 
           {/* Navigation Buttons */}

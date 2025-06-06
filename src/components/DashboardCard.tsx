@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +18,7 @@ interface DashboardCardProps {
   chartData?: Array<{ date: string; value: number }>;
   weeklyTotal?: number;
   monthlyTotal?: number;
+  showLiveDot?: boolean;
 }
 
 const DashboardCard: React.FC<DashboardCardProps> = ({
@@ -32,7 +32,8 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
   onClick,
   chartData,
   weeklyTotal,
-  monthlyTotal
+  monthlyTotal,
+  showLiveDot = false
 }) => {
   const countColors = {
     blue: 'text-[#1665c0]',
@@ -44,6 +45,12 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
     blue: '#1665c0', // Strong blue
     green: '#16a34a', // Strong green  
     purple: '#9333ea', // Strong purple
+  };
+
+  const dotColors = {
+    blue: 'bg-blue-500',
+    green: 'bg-green-500',
+    purple: 'bg-purple-500',
   };
 
   // Calculate average and trend
@@ -132,11 +139,16 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
             </div>
           ) : (
             <>
-              <div className={cn('text-4xl font-thin', countColors[color])}>
-                {isLoading ? (
-                  <div className="animate-pulse bg-gray-200 h-10 w-20 rounded" />
-                ) : (
-                  count.toLocaleString('sv-SE')
+              <div className="flex items-center gap-2">
+                <div className={cn('text-4xl font-thin', countColors[color])}>
+                  {isLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-10 w-20 rounded" />
+                  ) : (
+                    count.toLocaleString('sv-SE')
+                  )}
+                </div>
+                {showLiveDot && !isLoading && (
+                  <div className={cn('w-2 h-2 rounded-full animate-pulse opacity-75', dotColors[color])} />
                 )}
               </div>
               {isLoading && (
