@@ -40,10 +40,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
     purple: 'text-purple-600',
   };
 
-  const gradientColors = {
-    blue: 'bg-blue-50',
-    green: 'bg-green-50',
-    purple: 'bg-purple-50',
+  const borderColors = {
+    blue: 'border-blue-200',
+    green: 'border-green-200',
+    purple: 'border-purple-200',
   };
 
   // Calculate average and trend
@@ -104,7 +104,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
           <Badge 
             variant="outline" 
             className={cn(
-              'text-xs opacity-70 bg-gray-50 border-gray-200',
+              'text-xs opacity-90 bg-gray-50 border-gray-200',
               getTrendColor(averageData.trend)
             )}
           >
@@ -149,7 +149,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               {!isLoading && !error && (weeklyTotal !== undefined || monthlyTotal !== undefined) && (
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   {/* Weekly Total */}
-                  <div className={cn('p-2 rounded-lg', gradientColors[color])}>
+                  <div className={cn('p-2 rounded-lg border bg-white', borderColors[color])}>
                     <div className="text-xs text-gray-500 mb-1">Vecka</div>
                     <div className="text-sm font-medium">
                       {weeklyTotal !== undefined ? weeklyTotal.toLocaleString('sv-SE') : '--'}
@@ -157,7 +157,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   </div>
                   
                   {/* Monthly Total */}
-                  <div className={cn('p-2 rounded-lg', gradientColors[color])}>
+                  <div className={cn('p-2 rounded-lg border bg-white', borderColors[color])}>
                     <div className="text-xs text-gray-500 mb-1">Månad</div>
                     <div className="text-sm font-medium">
                       {monthlyTotal !== undefined ? monthlyTotal.toLocaleString('sv-SE') : '--'}
@@ -167,8 +167,8 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   {/* Navigation */}
                   <div 
                     className={cn(
-                      'p-2 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity',
-                      gradientColors[color]
+                      'p-2 rounded-lg border bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity',
+                      borderColors[color]
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -177,12 +177,6 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   >
                     <ArrowRight className="h-4 w-4 text-gray-600" />
                   </div>
-                </div>
-              )}
-              
-              {filterInfo && (
-                <div className="text-xs text-gray-400">
-                  {filterInfo}
                 </div>
               )}
             </>

@@ -440,7 +440,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={avtalLoading}
               error={avtalError}
               color="green"
-              filterInfo="Status: Signerad"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('avtal')}
               chartData={avtalChartData}
@@ -454,7 +453,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={samtalLoading}
               error={samtalError}
               color="blue"
-              filterInfo="Alla samtal"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('samtal')}
               chartData={samtalChartData}
@@ -468,7 +466,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               isLoading={ordrarLoading}
               error={ordrarError}
               color="purple"
-              filterInfo="Alla ordrar"
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => handleCardClick('ordrar')}
               chartData={ordrarChartData}
