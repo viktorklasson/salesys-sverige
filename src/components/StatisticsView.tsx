@@ -1,90 +1,100 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Filter, Calendar, Download } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { salesysApi, Project } from '@/services/salesysApi';
+import { ChevronLeft, Calendar, Filter } from 'lucide-react';
+import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
-import DashboardCard from './DashboardCard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface StatisticsViewProps {
+  statType: 'avtal' | 'samtal' | 'ordrar';
   onBack: () => void;
 }
 
-interface StatisticsData {
-  calls: number;
-  connectedCalls: number;
-  deals: number;
-}
-
-interface WeeklyStatistics {
-  calls: number;
-  connectedCalls: number;
-  deals: number;
-}
-
-interface MonthlyStatistics {
-  calls: number;
-  connectedCalls: number;
-  deals: number;
-}
-
-interface ChartDataPoint {
-  date: string;
-  value: number;
-}
-
-const StatisticsView: React.FC<StatisticsViewProps> = ({ onBack }) => {
+const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => {
   const { toast } = useToast();
-  const [statistics, setStatistics] = useState<StatisticsData>({ calls: 0, connectedCalls: 0, deals: 0 });
-  const [weeklyStats, setWeeklyStats] = useState<WeeklyStatistics>({ calls: 0, connectedCalls: 0, deals: 0 });
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatistics>({ calls: 0, connectedCalls: 0, deals: 0 });
+  const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'all'>('week');
+  const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('today');
-  const [selectedProject, setSelectedProject] = useState<string>('all');
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+
+  // Helper functions for date calculations
+  const getTodayRange = (): { from: string; to: string } => {
+    const now = new Date();
+    const today = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
+    
+    const from = new Date(today);
+    from.setHours(0, 0, 0, 0);
+    
+    const to = new Date(today);
+    to.setHours(23, 59, 59, 999);
+
+    return {
+      from: from.toISOString(),
+      to: to.toISOString()
+    };
+  };
+
+  const getWeekDates = (): { from: string; to: string } => {
+    const today = new Date();
+    const currentDay = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    monday.setHours(0, 0, 0, 0);
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    
+    return {
+      from: monday.toISOString(),
+      to: sunday.toISOString()
+    };
+  };
+
+  const getMonthDates = (): { from: string; to: string } => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    return {
+      from: start.toISOString(),
+      to: end.toISOString()
+    };
+  };
 
   useEffect(() => {
-    loadStatistics();
-    loadProjects();
-  }, [selectedPeriod, selectedProject]);
+    loadData();
+  }, [statType, timeRange]);
 
-  const loadStatistics = async () => {
+  const loadData = async () => {
     setLoading(true);
     setError('');
-
+    
     try {
-      const data = await salesysApi.getStatistics(selectedPeriod, selectedProject);
-      setStatistics(data.total);
-      setWeeklyStats(data.weekly);
-      setMonthlyStats(data.monthly);
-      setChartData(data.chartData);
+      // Simple data loading logic for now
+      console.log(`Loading ${statType} data for ${timeRange}`);
+      setData([]);
     } catch (error) {
-      setError('Kunde inte ladda statistik.');
-      toast({
-        title: "Fel",
-        description: "Kunde inte ladda statistik.",
-        variant: "destructive",
-      });
+      const errorMsg = `Kunde inte ladda ${statType}-statistik`;
+      setError(errorMsg);
+      console.error('Error loading statistics:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadProjects = async () => {
-    try {
-      const projectsData = await salesysApi.getProjects();
-      setProjects(projectsData);
-    } catch (error) {
-      console.error('Error loading projects:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte ladda projekt.",
-        variant: "destructive",
-      });
+  const getTitle = () => {
+    switch (statType) {
+      case 'avtal': return 'Avtal';
+      case 'samtal': return 'Samtal';
+      case 'ordrar': return 'Ordrar';
+      default: return 'Statistik';
     }
   };
 
@@ -101,93 +111,52 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ onBack }) => {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="flex-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {selectedPeriod === 'today' ? 'Idag' : 
-                     selectedPeriod === 'week' ? 'Denna vecka' : 
-                     selectedPeriod === 'month' ? 'Denna månad' : 'Alla'}
-                  </Badge>
-                  {selectedProject !== 'all' && (
-                    <Badge variant="outline" className="text-xs">
-                      {projects.find(p => p.id === selectedProject)?.name || 'Projekt'}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              
-              {/* Filters */}
-              <div className="flex items-center gap-2">
-                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                  <SelectTrigger className="w-32 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="today">Idag</SelectItem>
-                    <SelectItem value="week">Denna vecka</SelectItem>
-                    <SelectItem value="month">Denna månad</SelectItem>
-                    <SelectItem value="all">Alla</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
-                  <SelectTrigger className="w-40 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Alla projekt</SelectItem>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
-                  <Download className="h-3 w-3 mr-1" />
-                  Export
-                </Button>
-              </div>
-            </div>
+          <div>
+            <h1 className="text-2xl font-light text-gray-800">{getTitle()}</h1>
+            <p className="text-sm text-gray-500 mt-1">Detaljerad statistik</p>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <DashboardCard
-            title="Samtal"
-            count={statistics.calls}
-            isLoading={loading}
-            error={error}
-            color="blue"
-            chartData={chartData}
-            weeklyTotal={weeklyStats.calls}
-            monthlyTotal={monthlyStats.calls}
-          />
-          <DashboardCard
-            title="Anslutna samtal"
-            count={statistics.connectedCalls}
-            isLoading={loading}
-            error={error}
-            color="green"
-            chartData={chartData}
-            weeklyTotal={weeklyStats.connectedCalls}
-            monthlyTotal={monthlyStats.connectedCalls}
-          />
-          <DashboardCard
-            title="Avtal signerade"
-            count={statistics.deals}
-            isLoading={loading}
-            error={error}
-            color="purple"
-            chartData={chartData}
-            weeklyTotal={weeklyStats.deals}
-            monthlyTotal={monthlyStats.deals}
-          />
+        {/* Time Range Selector */}
+        <div className="flex items-center gap-4 mb-6">
+          <Select value={timeRange} onValueChange={(value: 'today' | 'week' | 'month' | 'all') => setTimeRange(value)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Idag</SelectItem>
+              <SelectItem value="week">Denna vecka</SelectItem>
+              <SelectItem value="month">Denna månad</SelectItem>
+              <SelectItem value="all">Alla</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Content */}
+        {loading ? (
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardContent className="pt-6">
+              <div className="animate-pulse space-y-4">
+                <div className="bg-gray-200 h-4 w-1/4 rounded" />
+                <div className="bg-gray-200 h-32 w-full rounded" />
+              </div>
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card className="border-red-100 bg-red-50 rounded-2xl">
+            <CardContent className="pt-6">
+              <div className="text-sm text-red-600">{error}</div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-white border-0 shadow-sm rounded-2xl">
+            <CardContent className="pt-6">
+              <div className="text-center text-gray-500">
+                Statistikdata kommer att visas här
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
