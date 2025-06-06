@@ -1,4 +1,3 @@
-
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -29,6 +28,10 @@
  * - GET https://app.salesys.se/api/offers/statistics-v1/own/issue_1238_2?from=2025-04-01&to=2025-05-13&fixedIntervalType=day
  * - GET https://app.salesys.se/api/dial/statistics-v1/own/issue_1238_2?from=2025-05-10&to=2025-05-15&fixedIntervalType=day
  * - GET https://app.salesys.se/api/orders/statistics-v1/own/issue_1238_2?from=2025-05-30&to=2025-06-03&fixedIntervalType=day
+ * 
+ * DASHBOARDS:
+ * - GET https://app.salesys.se/api/users/dashboards-v1
+ * - GET https://app.salesys.se/api/users/dashboards-v1/{id}/results
  * 
  * USERS & TEAMS:
  * - GET https://app.salesys.se/api/users/users-v1
@@ -197,6 +200,40 @@ export interface Team {
   rights: string[];
   isLocked: boolean;
   calendarAccess: any[];
+}
+
+export interface Dashboard {
+  id: string;
+  name: string;
+  organizationId: string;
+  readers: Array<{
+    id: string;
+    name: string;
+    variables: Array<{
+      id: string;
+      calls?: any;
+      orders?: any;
+      offers?: any;
+      users?: any;
+    }>;
+    expression?: string;
+    unit?: string;
+    intervalMillis?: number;
+    position: number;
+  }>;
+  groupBy: any;
+  filterTypes: string[];
+  projectIds: any;
+  isRemoved: boolean;
+}
+
+export interface DashboardResult {
+  readerId: string;
+  intervals: Array<{
+    value: number;
+    intervalStart: string;
+  }>;
+  groupedId: string;
 }
 
 class SalesysApiService {
@@ -535,6 +572,17 @@ class SalesysApiService {
   async getTeams(): Promise<Team[]> {
     const url = 'https://app.salesys.se/api/users/teams-v1';
     return this.makeRequest<Team[]>(url);
+  }
+
+  // Dashboards API
+  async getDashboards(): Promise<Dashboard[]> {
+    const url = 'https://app.salesys.se/api/users/dashboards-v1';
+    return this.makeRequest<Dashboard[]>(url);
+  }
+
+  async getDashboardResults(dashboardId: string): Promise<DashboardResult[]> {
+    const url = `https://app.salesys.se/api/users/dashboards-v1/${dashboardId}/results`;
+    return this.makeRequest<DashboardResult[]>(url);
   }
 }
 

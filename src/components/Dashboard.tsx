@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings, LogOut } from 'lucide-react';
-import { salesysApi, DialGroup, DialGroupSummary } from '@/services/salesysApi';
+import { salesysApi, DialGroup, DialGroupSummary, Dashboard } from '@/services/salesysApi';
 import DashboardCard from './DashboardCard';
 import DialGroupCard from './DialGroupCard';
 import StatisticsView from './StatisticsView';
+import DashboardListCard from './DashboardListCard';
+import DashboardDetailView from './DashboardDetailView';
 import { useToast } from '@/hooks/use-toast';
 import {
   DropdownMenu,
@@ -24,8 +25,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const { toast } = useToast();
   
   // View state
-  const [currentView, setCurrentView] = useState<'dashboard' | 'statistics'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'statistics' | 'dashboard-detail'>('dashboard');
   const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar'>('avtal');
+  const [selectedDashboard, setSelectedDashboard] = useState<Dashboard | null>(null);
   
   // Track if this is the initial load
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -51,6 +53,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [ordrarChartData, setOrdrarChartData] = useState<Array<{ date: string; value: number }>>([]);
   const [ordrarWeeklyTotal, setOrdrarWeeklyTotal] = useState<number>(0);
   const [ordrarMonthlyTotal, setOrdrarMonthlyTotal] = useState<number>(0);
+
+  // Dashboards state
+  const [dashboards, setDashboards] = useState<Dashboard[]>([]);
+  const [dashboardsLoading, setDashboardsLoading] = useState(false);
+  const [dashboardsError, setDashboardsError] = useState('');
 
   // Dial groups state
   const [dialGroups, setDialGroups] = useState<DialGroup[]>([]);
@@ -112,6 +119,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const resetAllState = () => {
     setCurrentView('dashboard');
     setSelectedStatType('avtal');
+    setSelectedDashboard(null);
     
     setAvtalCount(0);
     setAvtalLoading(false);
@@ -138,6 +146,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     setDialGroupSummaries(new Map());
     setDialGroupsLoading(false);
     setDialGroupsError('');
+    
+    setDashboards([]);
+    setDashboardsLoading(false);
+    setDashboardsError('');
     
     setStatisticsDataPreloaded(false);
   };
@@ -387,6 +399,29 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
+  // Load Dashboards
+  const loadDashboards = async () => {
+    // Only show loading on initial load
+    if (isInitialLoad) {
+      setDashboardsLoading(true);
+    }
+    setDashboardsError('');
+    
+    try {
+      const data = await salesysApi.getDashboards();
+      setDashboards(data.filter(d => !d.isRemoved));
+      console.log('Loaded dashboards:', data.length);
+    } catch (error) {
+      const errorMsg = 'Kunde inte ladda dashboards';
+      setDashboardsError(errorMsg);
+      console.error('Error loading dashboards:', error);
+    } finally {
+      if (isInitialLoad) {
+        setDashboardsLoading(false);
+      }
+    }
+  };
+
   // Preload statistics data in the background
   const preloadStatisticsData = async () => {
     if (statisticsDataPreloaded) return;
@@ -407,7 +442,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       loadAvtal(),
       loadSamtal(),
       loadOrdrar(),
-      loadDialGroups()
+      loadDialGroups(),
+      loadDashboards()
     ]);
     
     // Mark initial load as complete
@@ -444,12 +480,27 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   const handleBackToDashboard = () => {
     setCurrentView('dashboard');
+    setSelectedDashboard(null);
+  };
+
+  const handleDashboardClick = (dashboard: Dashboard) => {
+    setSelectedDashboard(dashboard);
+    setCurrentView('dashboard-detail');
   };
 
   if (currentView === 'statistics') {
     return (
       <StatisticsView 
         statType={selectedStatType} 
+        onBack={handleBackToDashboard} 
+      />
+    );
+  }
+
+  if (currentView === 'dashboard-detail' && selectedDashboard) {
+    return (
+      <DashboardDetailView 
+        dashboard={selectedDashboard} 
         onBack={handleBackToDashboard} 
       />
     );
@@ -524,6 +575,55 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               monthlyTotal={ordrarMonthlyTotal}
             />
           </div>
+        </section>
+
+        {/* Available Dashboards Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-light text-gray-700">Tillgängliga Dashboards</h2>
+            <Badge variant="outline" className="text-xs">
+              {dashboards.length} dashboard{dashboards.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+          
+          {dashboardsError && (
+            <Card className="border-red-100 bg-red-50 rounded-2xl">
+              <CardContent className="pt-6">
+                <div className="text-sm text-red-600">{dashboardsError}</div>
+              </CardContent>
+            </Card>
+          )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dashboardsLoading ? (
+              // Loading skeletons
+              Array.from({ length: 6 }).map((_, index) => (
+                <Card key={index} className="bg-white border-0 shadow-sm rounded-2xl">
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="animate-pulse bg-gray-200 h-4 w-3/4 rounded" />
+                    <div className="animate-pulse bg-gray-200 h-4 w-1/2 rounded" />
+                    <div className="animate-pulse bg-gray-200 h-2 w-full rounded" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              dashboards.map((dashboard) => (
+                <DashboardListCard
+                  key={dashboard.id}
+                  dashboard={dashboard}
+                  onClick={() => handleDashboardClick(dashboard)}
+                />
+              ))
+            )}
+          </div>
+          
+          {!dashboardsLoading && dashboards.length === 0 && !dashboardsError && (
+            <Card className="bg-white rounded-2xl border-0 shadow-sm">
+              <CardContent className="pt-6 text-center text-gray-500">
+                Inga dashboards hittades
+              </CardContent>
+            </Card>
+          )}
         </section>
 
         {/* Dial Groups Section */}
