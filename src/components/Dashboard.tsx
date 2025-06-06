@@ -18,6 +18,7 @@ import { format } from "date-fns"
 import { sv } from 'date-fns/locale';
 import DashboardCard from './DashboardCard';
 import DashboardListCard from './DashboardListCard';
+import DashboardDetailView from './DashboardDetailView';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -565,48 +566,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     );
   }
 
-  // Dashboard view
+  // Dashboard view - updated to use DashboardDetailView
   return (
-    <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-light text-gray-800">
-            {selectedDashboard?.name || 'Dashboard'}
-          </h1>
-          <Button variant="outline" onClick={handleBackToWelcome}>
-            Tillbaka till översikt
-          </Button>
-        </div>
-
-        {loadingDashboardResults ? (
-          <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardContent className="pt-6">
-              <div className="animate-pulse space-y-4">
-                <div className="bg-gray-200 h-4 w-1/4 rounded" />
-                <div className="bg-gray-200 h-80 w-full rounded" />
-              </div>
-            </CardContent>
-          </Card>
-        ) : dashboardResults ? (
-          <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardHeader>
-              <CardTitle className="text-lg font-light">Dashboard Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="text-sm bg-gray-100 p-4 rounded overflow-auto">
-                {JSON.stringify(dashboardResults, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-white border-0 shadow-sm rounded-2xl">
-            <CardContent className="pt-6">
-              <p className="text-gray-500">Ingen data hittades för denna statistikvy.</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+    <DashboardDetailView
+      dashboard={selectedDashboard}
+      onBack={handleBackToWelcome}
+    />
   );
 };
 
