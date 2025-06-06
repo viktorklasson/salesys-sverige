@@ -405,7 +405,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-white">
       {/* Top Section with Greeting and Settings */}
       <div className="relative">
         <div className="container mx-auto px-4 pt-8 pb-6">

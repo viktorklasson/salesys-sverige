@@ -40,10 +40,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
     purple: 'text-purple-600',
   };
 
-  const borderColors = {
-    blue: 'border-blue-200',
-    green: 'border-green-200',
-    purple: 'border-purple-200',
+  const chartColors = {
+    blue: '#1665c0', // Strong blue
+    green: '#16a34a', // Strong green  
+    purple: '#9333ea', // Strong purple
   };
 
   // Calculate average and trend
@@ -103,10 +103,8 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
         <div className="absolute top-3 right-3 z-0">
           <Badge 
             variant="outline" 
-            className={cn(
-              'text-xs opacity-90 bg-gray-50 border-gray-200',
-              getTrendColor(averageData.trend)
-            )}
+            className="text-xs opacity-90 bg-gray-50 border-gray-200"
+            style={{ color: chartColors[color] }}
           >
             <span className="flex items-center gap-1">
               {getTrendIcon(averageData.trend)}
@@ -149,16 +147,22 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               {!isLoading && !error && (weeklyTotal !== undefined || monthlyTotal !== undefined) && (
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   {/* Weekly Total */}
-                  <div className={cn('p-2 rounded-lg border bg-white', borderColors[color])}>
-                    <div className="text-xs text-gray-500 mb-1">Vecka</div>
+                  <div 
+                    className="p-2 rounded-lg border-2 bg-white text-white text-center"
+                    style={{ borderColor: chartColors[color], backgroundColor: chartColors[color] }}
+                  >
+                    <div className="text-xs opacity-80 mb-1">Vecka</div>
                     <div className="text-sm font-medium">
                       {weeklyTotal !== undefined ? weeklyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
                   </div>
                   
                   {/* Monthly Total */}
-                  <div className={cn('p-2 rounded-lg border bg-white', borderColors[color])}>
-                    <div className="text-xs text-gray-500 mb-1">Månad</div>
+                  <div 
+                    className="p-2 rounded-lg border-2 bg-white text-white text-center"
+                    style={{ borderColor: chartColors[color], backgroundColor: chartColors[color] }}
+                  >
+                    <div className="text-xs opacity-80 mb-1">Månad</div>
                     <div className="text-sm font-medium">
                       {monthlyTotal !== undefined ? monthlyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
@@ -166,16 +170,14 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   
                   {/* Navigation */}
                   <div 
-                    className={cn(
-                      'p-2 rounded-lg border bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity',
-                      borderColors[color]
-                    )}
+                    className="p-2 rounded-lg border-2 bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ borderColor: chartColors[color] }}
                     onClick={(e) => {
                       e.stopPropagation();
                       onClick?.();
                     }}
                   >
-                    <ArrowRight className="h-4 w-4 text-gray-600" />
+                    <ArrowRight className="h-4 w-4" style={{ color: chartColors[color] }} />
                   </div>
                 </div>
               )}
