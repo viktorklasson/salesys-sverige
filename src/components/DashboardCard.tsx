@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -147,31 +146,30 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               {!isLoading && !error && (weeklyTotal !== undefined || monthlyTotal !== undefined) && (
                 <div className="grid grid-cols-3 gap-2 mt-4">
                   {/* Weekly Total */}
-                  <div 
-                    className="p-2 rounded-lg border bg-white text-center"
-                    style={{ borderColor: chartColors[color], color: chartColors[color] }}
-                  >
-                    <div className="text-xs opacity-70 mb-1">Vecka</div>
-                    <div className="text-sm font-medium">
+                  <div className="p-2 rounded-lg border border-gray-200 bg-white text-left">
+                    <div className="text-xs text-gray-500 mb-1">Vecka</div>
+                    <div 
+                      className="text-sm font-medium"
+                      style={{ color: chartColors[color] }}
+                    >
                       {weeklyTotal !== undefined ? weeklyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
                   </div>
                   
                   {/* Monthly Total */}
-                  <div 
-                    className="p-2 rounded-lg border bg-white text-center"
-                    style={{ borderColor: chartColors[color], color: chartColors[color] }}
-                  >
-                    <div className="text-xs opacity-70 mb-1">Månad</div>
-                    <div className="text-sm font-medium">
+                  <div className="p-2 rounded-lg border border-gray-200 bg-white text-left">
+                    <div className="text-xs text-gray-500 mb-1">Månad</div>
+                    <div 
+                      className="text-sm font-medium"
+                      style={{ color: chartColors[color] }}
+                    >
                       {monthlyTotal !== undefined ? monthlyTotal.toLocaleString('sv-SE') : '--'}
                     </div>
                   </div>
                   
                   {/* Navigation */}
                   <div 
-                    className="p-2 rounded-lg border bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{ borderColor: chartColors[color] }}
+                    className="p-2 rounded-lg border border-gray-200 bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
                       onClick?.();

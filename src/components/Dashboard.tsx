@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Settings, LogOut } from 'lucide-react';
-import { salesysApi, DialGroup, DialGroupSummary, Dashboard } from '@/services/salesysApi';
+import { salesysApi, DialGroup, DialGroupSummary, type Dashboard } from '@/services/salesysApi';
 import DashboardCard from './DashboardCard';
 import DialGroupCard from './DialGroupCard';
 import StatisticsView from './StatisticsView';
