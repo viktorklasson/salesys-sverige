@@ -1,10 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Users, Filter } from 'lucide-react';
-import Stats10 from '@/components/ui/stats-4';
+import { ChartContainer } from '@/components/ui/stats-4';
+import { type ChartConfig } from '@/components/ui/chart';
+import * as RechartsPrimitive from 'recharts';
 import { salesysApi, StatisticsData, User, Team } from '@/services/salesysApi';
 import {
   DropdownMenu,
@@ -123,8 +126,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           statisticsData = [];
       }
 
-      // Process chart data for horizontal stacked bar chart
-      const userChartMap = new Map<string, { [key: string]: number }>();
+      // Process chart data - converting to line chart format
+      const userDataMap = new Map<string, { [key: string]: number }>();
       const dateSet = new Set<string>();
 
       statisticsData.forEach(item => {
@@ -134,29 +137,31 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         
         dateSet.add(date);
         
-        if (!userChartMap.has(userName)) {
-          userChartMap.set(userName, {});
+        if (!userDataMap.has(userName)) {
+          userDataMap.set(userName, {});
         }
         
-        const userData = userChartMap.get(userName)!;
+        const userData = userDataMap.get(userName)!;
         userData[date] = (userData[date] || 0) + item.count;
       });
 
-      // Convert to chart format - taking top 5 users for better visibility
-      const topUsers = Array.from(userChartMap.entries())
+      // Convert to chart format - taking top 3 users for better visibility on mobile
+      const topUsers = Array.from(userDataMap.entries())
         .map(([userName, dates]) => ({
           userName,
           total: Object.values(dates).reduce((sum, count) => sum + count, 0)
         }))
         .sort((a, b) => b.total - a.total)
-        .slice(0, 5);
+        .slice(0, 3);
 
       const chartDataArray: any[] = Array.from(dateSet)
         .sort()
         .map(date => {
-          const dataPoint: any = { date };
+          const dataPoint: any = { 
+            date: new Date(date).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })
+          };
           topUsers.forEach(({ userName }) => {
-            const userMap = userChartMap.get(userName);
+            const userMap = userDataMap.get(userName);
             dataPoint[userName] = userMap?.[date] || 0;
           });
           return dataPoint;
@@ -226,7 +231,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   };
 
   // Generate colors for top users
-  const colors = ['#1665c0', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const colors = ['#1665c0', '#10b981', '#f59e0b'];
   const topUsers = chartData.length > 0 ? Object.keys(chartData[0]).filter(key => key !== 'date') : [];
   const chartConfig: ChartConfig = topUsers.reduce((config, userName, index) => {
     config[userName] = {
@@ -269,10 +274,10 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
-      <div className="container mx-auto space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gray-50 p-2 sm:p-6">
+      <div className="container mx-auto space-y-4 sm:space-y-6 max-w-full">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-2 sm:px-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
             <Button onClick={onBack} variant="ghost" className="self-start">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -283,20 +288,56 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           </div>
         </div>
 
-        {/* Chart - Using Stats10 component */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl">
-          <CardHeader>
+        {/* Chart */}
+        <Card className="bg-white border-0 shadow-sm rounded-2xl mx-2 sm:mx-0">
+          <CardHeader className="pb-4">
             <CardTitle className="text-base sm:text-lg font-light text-gray-700">
               Trendanalys - Topp användare
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Stats10 />
+          <CardContent className="px-2 sm:px-6">
+            <div className="h-64 sm:h-80 w-full">
+              {chartData.length > 0 ? (
+                <ChartContainer config={chartConfig} className="w-full h-full">
+                  <RechartsPrimitive.LineChart 
+                    data={chartData}
+                    margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
+                  >
+                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <RechartsPrimitive.XAxis 
+                      dataKey="date" 
+                      stroke="#666" 
+                      fontSize={12}
+                      interval="preserveStartEnd"
+                    />
+                    <RechartsPrimitive.YAxis stroke="#666" fontSize={12} />
+                    <RechartsPrimitive.Tooltip 
+                      formatter={(value, name) => [value, name]}
+                    />
+                    <RechartsPrimitive.Legend />
+                    {topUsers.map((userName, index) => (
+                      <RechartsPrimitive.Line
+                        key={userName}
+                        type="monotone"
+                        dataKey={userName}
+                        stroke={colors[index % colors.length]}
+                        strokeWidth={2}
+                        dot={{ r: 4 }}
+                      />
+                    ))}
+                  </RechartsPrimitive.LineChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Ingen data tillgänglig för den valda perioden
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* User Stats Table */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl">
+        <Card className="bg-white border-0 shadow-sm rounded-2xl mx-2 sm:mx-0">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <CardTitle className="text-base sm:text-lg font-light text-gray-700 flex items-center gap-2">
