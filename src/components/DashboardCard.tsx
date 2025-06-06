@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -184,13 +185,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
                   </div>
                   
                   {/* Navigation */}
-                  <div 
-                    className="p-2 rounded-lg border border-gray-200 bg-white flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onClick?.();
-                    }}
-                  >
+                  <div className="p-2 rounded-lg border border-gray-200 bg-white flex items-center justify-center">
                     <ArrowRight className="h-4 w-4" style={{ color: chartColors[color] }} />
                   </div>
                 </div>
