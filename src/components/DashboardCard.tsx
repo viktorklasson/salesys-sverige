@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ArrowRight, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import MiniChart from './MiniChart';
 
@@ -115,9 +116,12 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
 
       <CardHeader className="pb-3 relative z-10">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-light text-gray-600">
-            {title}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-sm font-light text-gray-600">
+              {title}
+            </CardTitle>
+            <Settings className="h-3 w-3 text-gray-400" />
+          </div>
         </div>
       </CardHeader>
       <CardContent className="relative z-10">

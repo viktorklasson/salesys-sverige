@@ -1,518 +1,193 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ChevronLeft, Filter, Calendar, Download } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Users, Filter, Settings } from 'lucide-react';
-import { ChartContainer } from '@/components/ui/stats-4';
-import { type ChartConfig } from '@/components/ui/chart';
-import * as RechartsPrimitive from 'recharts';
-import { salesysApi, StatisticsData, User, Team } from '@/services/salesysApi';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { salesysApi, Project } from '@/services/salesysApi';
+import { useToast } from '@/hooks/use-toast';
+import DashboardCard from './DashboardCard';
 
 interface StatisticsViewProps {
-  statType: 'avtal' | 'samtal' | 'ordrar';
   onBack: () => void;
 }
 
-interface ChartData {
+interface StatisticsData {
+  calls: number;
+  connectedCalls: number;
+  deals: number;
+}
+
+interface WeeklyStatistics {
+  calls: number;
+  connectedCalls: number;
+  deals: number;
+}
+
+interface MonthlyStatistics {
+  calls: number;
+  connectedCalls: number;
+  deals: number;
+}
+
+interface ChartDataPoint {
   date: string;
-  count: number;
+  value: number;
 }
 
-interface UserStats {
-  userId: string;
-  fullName: string;
-  teamName: string;
-  totalCount: number;
-  totalDuration?: number;
-  connectedCount?: number;
-}
-
-const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => {
-  const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [userStats, setUserStats] = useState<UserStats[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+const StatisticsView: React.FC<StatisticsViewProps> = ({ onBack }) => {
+  const { toast } = useToast();
+  const [statistics, setStatistics] = useState<StatisticsData>({ calls: 0, connectedCalls: 0, deals: 0 });
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStatistics>({ calls: 0, connectedCalls: 0, deals: 0 });
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatistics>({ calls: 0, connectedCalls: 0, deals: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedUser, setSelectedUser] = useState<string>('all');
-  const [selectedTeam, setSelectedTeam] = useState<string>('all');
-  
-  // Data filter states
-  const [contractStatus, setContractStatus] = useState<string>('signed');
-  const [orderTag, setOrderTag] = useState<string>('all');
-  const [callTag, setCallTag] = useState<string>('all');
-
-  const getStatTitle = () => {
-    switch (statType) {
-      case 'avtal': return 'Avtal signerade';
-      case 'samtal': return 'Samtal genomförda';
-      case 'ordrar': return 'Ordrar skapade';
-      default: return 'Statistik';
-    }
-  };
-
-  const getApiEndpoint = () => {
-    switch (statType) {
-      case 'avtal': return 'issue_1238_2';
-      case 'samtal': return 'issue_1238_2';
-      case 'ordrar': return 'issue_1238_2';
-      default: return 'issue_1238_2';
-    }
-  };
-
-  const getDateRange = () => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 30); // Last 30 days
-
-    return {
-      from: from.toISOString().split('T')[0],
-      to: to.toISOString().split('T')[0]
-    };
-  };
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('today');
+  const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
 
   useEffect(() => {
-    loadData();
-  }, [statType, contractStatus, orderTag, callTag]);
+    loadStatistics();
+    loadProjects();
+  }, [selectedPeriod, selectedProject]);
 
-  const loadData = async () => {
+  const loadStatistics = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const { from, to } = getDateRange();
-      
-      // Load users and teams data in parallel
-      const [usersData, teamsData] = await Promise.all([
-        salesysApi.getUsers(),
-        salesysApi.getTeams()
-      ]);
-
-      setUsers(usersData);
-      setTeams(teamsData);
-
-      // Load statistics data based on stat type
-      let statisticsData: StatisticsData[];
-      
-      switch (statType) {
-        case 'avtal':
-          statisticsData = await salesysApi.getStatistics({
-            endpoint: getApiEndpoint(),
-            from,
-            to,
-            fixedIntervalType: 'day'
-          });
-          break;
-        case 'samtal':
-          statisticsData = await salesysApi.getCallStatistics({
-            endpoint: getApiEndpoint(),
-            from,
-            to,
-            fixedIntervalType: 'day'
-          });
-          break;
-        case 'ordrar':
-          statisticsData = await salesysApi.getOrderStatistics({
-            endpoint: getApiEndpoint(),
-            from,
-            to,
-            fixedIntervalType: 'day'
-          });
-          break;
-        default:
-          statisticsData = [];
-      }
-
-      // Filter out SaleSys data (users that cannot be matched)
-      const filteredStatisticsData = statisticsData.filter(item => {
-        const user = usersData.find(u => u.id === item.userId);
-        return user !== undefined; // Only keep data for users that exist
+      const data = await salesysApi.getStatistics(selectedPeriod, selectedProject);
+      setStatistics(data.total);
+      setWeeklyStats(data.weekly);
+      setMonthlyStats(data.monthly);
+      setChartData(data.chartData);
+    } catch (error) {
+      setError('Kunde inte ladda statistik.');
+      toast({
+        title: "Fel",
+        description: "Kunde inte ladda statistik.",
+        variant: "destructive",
       });
-
-      // Process chart data - converting to line chart format
-      const userDataMap = new Map<string, { [key: string]: number }>();
-      const dateSet = new Set<string>();
-
-      filteredStatisticsData.forEach(item => {
-        const date = item.intervalStart.split('T')[0];
-        const user = usersData.find(u => u.id === item.userId);
-        const userName = user?.fullName || 'Okänd användare';
-        
-        dateSet.add(date);
-        
-        if (!userDataMap.has(userName)) {
-          userDataMap.set(userName, {});
-        }
-        
-        const userData = userDataMap.get(userName)!;
-        userData[date] = (userData[date] || 0) + item.count;
-      });
-
-      // Convert to chart format - taking top 3 users for better visibility on mobile
-      const topUsers = Array.from(userDataMap.entries())
-        .map(([userName, dates]) => ({
-          userName,
-          total: Object.values(dates).reduce((sum, count) => sum + count, 0)
-        }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 3);
-
-      const chartDataArray: any[] = Array.from(dateSet)
-        .sort()
-        .map(date => {
-          const dataPoint: any = { 
-            date: new Date(date).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })
-          };
-          topUsers.forEach(({ userName }) => {
-            const userMap = userDataMap.get(userName);
-            dataPoint[userName] = userMap?.[date] || 0;
-          });
-          return dataPoint;
-        });
-
-      setChartData(chartDataArray);
-
-      // Process user stats
-      const userStatsMap = new Map<string, {
-        totalCount: number;
-        totalDuration: number;
-        connectedCount: number;
-      }>();
-
-      filteredStatisticsData.forEach(item => {
-        const existing = userStatsMap.get(item.userId) || {
-          totalCount: 0,
-          totalDuration: 0,
-          connectedCount: 0
-        };
-
-        userStatsMap.set(item.userId, {
-          totalCount: existing.totalCount + item.count,
-          totalDuration: existing.totalDuration + (item.totalDuration || 0),
-          connectedCount: existing.connectedCount + (item.connectedCount || 0)
-        });
-      });
-
-      const userStatsArray: UserStats[] = Array.from(userStatsMap.entries())
-        .map(([userId, stats]) => {
-          const user = usersData.find(u => u.id === userId);
-          const team = teamsData.find(t => t.id === user?.teamId);
-          
-          return {
-            userId,
-            fullName: user?.fullName || 'Okänd användare',
-            teamName: team?.name || 'Inget team',
-            totalCount: stats.totalCount,
-            totalDuration: stats.totalDuration,
-            connectedCount: stats.connectedCount
-          };
-        })
-        .sort((a, b) => b.totalCount - a.totalCount);
-
-      setUserStats(userStatsArray);
-
-    } catch (err) {
-      setError('Kunde inte ladda statistikdata');
-      console.error('Error loading statistics:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredUserStats = userStats.filter(user => {
-    if (selectedUser !== 'all' && user.userId !== selectedUser) return false;
-    if (selectedTeam !== 'all') {
-      const userTeam = users.find(u => u.id === user.userId)?.teamId;
-      if (userTeam !== selectedTeam) return false;
+  const loadProjects = async () => {
+    try {
+      const projectsData = await salesysApi.getProjects();
+      setProjects(projectsData);
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ladda projekt.",
+        variant: "destructive",
+      });
     }
-    return true;
-  });
-
-  const formatDuration = (duration: number) => {
-    const minutes = Math.floor(duration / 60000);
-    return `${minutes}m`;
   };
 
-  // Generate colors for top users
-  const colors = ['#1665c0', '#10b981', '#f59e0b'];
-  const topUsers = chartData.length > 0 ? Object.keys(chartData[0]).filter(key => key !== 'date') : [];
-  const chartConfig: ChartConfig = topUsers.reduce((config, userName, index) => {
-    config[userName] = {
-      label: userName,
-      color: colors[index % colors.length],
-    };
-    return config;
-  }, {} as ChartConfig);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
-        <div className="container mx-auto px-1 sm:px-6">
-          <div className="animate-pulse space-y-4 sm:space-y-6">
-            <div className="h-6 sm:h-8 bg-gray-200 rounded w-1/2 sm:w-1/4"></div>
-            <div className="h-48 sm:h-64 bg-gray-200 rounded"></div>
-            <div className="h-24 sm:h-32 bg-gray-200 rounded"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
-        <div className="container mx-auto px-1 sm:px-6">
-          <Button onClick={onBack} variant="ghost" className="mb-4 sm:mb-6">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Tillbaka
-          </Button>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center text-red-600">{error}</div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-1 sm:p-6">
-      <div className="container mx-auto space-y-4 sm:space-y-6 max-w-full px-1 sm:px-6">
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <Button onClick={onBack} variant="ghost" className="self-start">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Tillbaka
-            </Button>
-            <h1 className="text-xl sm:text-2xl font-light text-gray-800">{getStatTitle()}</h1>
-            <Badge variant="outline" className="self-start">Senaste 30 dagarna</Badge>
-          </div>
-          
-          {/* Data Filter Settings */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings className="mr-2 h-4 w-4" />
-                Datafilter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Filtrera data</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+        <div className="flex items-center gap-4 mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="p-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {selectedPeriod === 'today' ? 'Idag' : 
+                     selectedPeriod === 'week' ? 'Denna vecka' : 
+                     selectedPeriod === 'month' ? 'Denna månad' : 'Alla'}
+                  </Badge>
+                  {selectedProject !== 'all' && (
+                    <Badge variant="outline" className="text-xs">
+                      {projects.find(p => p.id === selectedProject)?.name || 'Projekt'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
               
-              {statType === 'avtal' && (
-                <div className="p-2">
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Avtalsstatus</label>
-                  <Select value={contractStatus} onValueChange={setContractStatus}>
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="signed">Signerade</SelectItem>
-                      <SelectItem value="pending">Väntande</SelectItem>
-                      <SelectItem value="cancelled">Avbrutna</SelectItem>
-                      <SelectItem value="all">Alla</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {statType === 'ordrar' && (
-                <div className="p-2">
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Ordertagg</label>
-                  <Select value={orderTag} onValueChange={setOrderTag}>
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alla</SelectItem>
-                      <SelectItem value="urgent">Brådskande</SelectItem>
-                      <SelectItem value="standard">Standard</SelectItem>
-                      <SelectItem value="bulk">Bulk</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {statType === 'samtal' && (
-                <div className="p-2">
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Samtalstyp</label>
-                  <Select value={callTag} onValueChange={setCallTag}>
-                    <SelectTrigger className="h-8">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Alla</SelectItem>
-                      <SelectItem value="sales">Försäljning</SelectItem>
-                      <SelectItem value="support">Support</SelectItem>
-                      <SelectItem value="followup">Uppföljning</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+              {/* Filters */}
+              <div className="flex items-center gap-2">
+                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                  <SelectTrigger className="w-32 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Idag</SelectItem>
+                    <SelectItem value="week">Denna vecka</SelectItem>
+                    <SelectItem value="month">Denna månad</SelectItem>
+                    <SelectItem value="all">Alla</SelectItem>
+                  </SelectContent>
+                </Select>
 
-        {/* Chart */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-base sm:text-lg font-light text-gray-700">
-              Trendanalys - Topp användare
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-6">
-            <div className="h-64 sm:h-80 w-full">
-              {chartData.length > 0 ? (
-                <ChartContainer config={chartConfig} className="w-full h-full">
-                  <RechartsPrimitive.LineChart 
-                    data={chartData}
-                    margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
-                  >
-                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <RechartsPrimitive.XAxis 
-                      dataKey="date" 
-                      stroke="#666" 
-                      fontSize={12}
-                      interval="preserveStartEnd"
-                    />
-                    <RechartsPrimitive.YAxis stroke="#666" fontSize={12} />
-                    <RechartsPrimitive.Tooltip 
-                      formatter={(value, name) => [value, name]}
-                    />
-                    <RechartsPrimitive.Legend />
-                    {topUsers.map((userName, index) => (
-                      <RechartsPrimitive.Line
-                        key={userName}
-                        type="monotone"
-                        dataKey={userName}
-                        stroke={colors[index % colors.length]}
-                        strokeWidth={2}
-                        dot={false}
-                      />
+                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                  <SelectTrigger className="w-40 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Alla projekt</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
                     ))}
-                  </RechartsPrimitive.LineChart>
-                </ChartContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  Ingen data tillgänglig för den valda perioden
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                  </SelectContent>
+                </Select>
 
-        {/* User Stats Table */}
-        <Card className="bg-white border-0 shadow-sm rounded-2xl">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <CardTitle className="text-base sm:text-lg font-light text-gray-700 flex items-center gap-2">
-                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-                Användarstatistik
-              </CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="truncate">
-                        {selectedUser === 'all' ? 'Alla användare' : users.find(u => u.id === selectedUser)?.fullName}
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setSelectedUser('all')}>
-                      Alla användare
-                    </DropdownMenuItem>
-                    {users.map(user => (
-                      <DropdownMenuItem key={user.id} onClick={() => setSelectedUser(user.id)}>
-                        {user.fullName}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="justify-start">
-                      <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="truncate">
-                        {selectedTeam === 'all' ? 'Alla team' : teams.find(t => t.id === selectedTeam)?.name}
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setSelectedTeam('all')}>
-                      Alla team
-                    </DropdownMenuItem>
-                    {teams.map(team => (
-                      <DropdownMenuItem key={team.id} onClick={() => setSelectedTeam(team.id)}>
-                        {team.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button variant="outline" size="sm" className="h-8 px-3 text-xs">
+                  <Download className="h-3 w-3 mr-1" />
+                  Export
+                </Button>
               </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[120px]">Användare</TableHead>
-                    <TableHead className="min-w-[100px]">Team</TableHead>
-                    <TableHead className="min-w-[80px]">Antal</TableHead>
-                    {statType === 'samtal' && (
-                      <>
-                        <TableHead className="min-w-[80px]">Anslutna</TableHead>
-                        <TableHead className="min-w-[80px]">Total tid</TableHead>
-                      </>
-                    )}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUserStats.map((user) => (
-                    <TableRow key={user.userId}>
-                      <TableCell className="font-medium">{user.fullName}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" style={{ borderColor: teams.find(t => t.name === user.teamName)?.color }}>
-                          {user.teamName}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{user.totalCount}</TableCell>
-                      {statType === 'samtal' && (
-                        <>
-                          <TableCell>{user.connectedCount}</TableCell>
-                          <TableCell>{formatDuration(user.totalDuration || 0)}</TableCell>
-                        </>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <DashboardCard
+            title="Samtal"
+            count={statistics.calls}
+            isLoading={loading}
+            error={error}
+            color="blue"
+            chartData={chartData}
+            weeklyTotal={weeklyStats.calls}
+            monthlyTotal={monthlyStats.calls}
+          />
+          <DashboardCard
+            title="Anslutna samtal"
+            count={statistics.connectedCalls}
+            isLoading={loading}
+            error={error}
+            color="green"
+            chartData={chartData}
+            weeklyTotal={weeklyStats.connectedCalls}
+            monthlyTotal={monthlyStats.connectedCalls}
+          />
+          <DashboardCard
+            title="Avtal signerade"
+            count={statistics.deals}
+            isLoading={loading}
+            error={error}
+            color="purple"
+            chartData={chartData}
+            weeklyTotal={weeklyStats.deals}
+            monthlyTotal={monthlyStats.deals}
+          />
+        </div>
       </div>
     </div>
   );
