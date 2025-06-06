@@ -1,3 +1,4 @@
+
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -213,18 +214,30 @@ class SalesysApiService {
     return this.bearerToken;
   }
 
+  // Add cache busting parameter to URLs
+  private addCacheBusting(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    const timestamp = Date.now();
+    return `${url}${separator}_cb=${timestamp}`;
+  }
+
   private async makeRequest<T>(url: string): Promise<T> {
     const token = this.getBearerToken();
     if (!token) {
       throw new Error('Ingen bearer token tillgänglig. Vänligen logga in.');
     }
 
-    const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(url)}`;
+    // Add cache busting to the URL before encoding
+    const urlWithCacheBusting = this.addCacheBusting(url);
+    const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(urlWithCacheBusting)}`;
     
     const response = await fetch(proxyUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       },
     });
 
