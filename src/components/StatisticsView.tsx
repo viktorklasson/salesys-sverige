@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Users, Filter } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import * as RechartsPrimitive from 'recharts';
+import { ChartContainer, type ChartConfig } from '@/components/ui/stats-4';
 import { salesysApi, StatisticsData, User, Team } from '@/services/salesysApi';
 import {
   DropdownMenu,
@@ -54,9 +55,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
   const getApiEndpoint = () => {
     switch (statType) {
-      case 'avtal': return 'issue_1238_2'; // This might need adjustment based on actual endpoint
-      case 'samtal': return 'issue_1238_2'; // This might need adjustment based on actual endpoint
-      case 'ordrar': return 'issue_1238_2'; // This might need adjustment based on actual endpoint
+      case 'avtal': return 'issue_1238_2';
+      case 'samtal': return 'issue_1238_2';
+      case 'ordrar': return 'issue_1238_2';
       default: return 'issue_1238_2';
     }
   };
@@ -172,6 +173,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
     return `${minutes}m`;
   };
 
+  const chartConfig: ChartConfig = {
+    count: {
+      label: 'Antal',
+      color: '#1665c0',
+    },
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -226,29 +234,29 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
+              <ChartContainer config={chartConfig} className="w-full h-full">
+                <RechartsPrimitive.LineChart data={chartData}>
+                  <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <RechartsPrimitive.XAxis 
                     dataKey="date" 
                     stroke="#666"
                     fontSize={12}
                     tickFormatter={(date) => new Date(date).toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' })}
                   />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip 
+                  <RechartsPrimitive.YAxis stroke="#666" fontSize={12} />
+                  <RechartsPrimitive.Tooltip 
                     labelFormatter={(date) => new Date(date).toLocaleDateString('sv-SE')}
                     formatter={(value) => [value, 'Antal']}
                   />
-                  <Line 
+                  <RechartsPrimitive.Line 
                     type="monotone" 
                     dataKey="count" 
                     stroke="#1665c0" 
                     strokeWidth={2}
                     dot={{ fill: '#1665c0', strokeWidth: 2, r: 4 }}
                   />
-                </LineChart>
-              </ResponsiveContainer>
+                </RechartsPrimitive.LineChart>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>
