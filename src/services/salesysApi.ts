@@ -1,3 +1,4 @@
+
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -283,7 +284,7 @@ class SalesysApi {
       },
     };
 
-    if (data && method === 'POST') {
+    if (data && (method === 'POST' || method === 'PUT')) {
       requestOptions.body = JSON.stringify(data);
     }
 
@@ -344,11 +345,11 @@ class SalesysApi {
     }
 
     const url = `https://app.salesys.se/api/offers/offers-v2?${queryParams}`;
-    const data = await this.apiCall<Offer[]>(url);
+    const data = await this.apiCall(url);
 
     // Get total count
     const countUrl = `https://app.salesys.se/api/offers/offers-v1/count?${queryParams}`;
-    const countResponse = await this.apiCall<{ count: number }>(countUrl);
+    const countResponse = await this.apiCall(countUrl);
 
     return {
       data,
@@ -382,7 +383,7 @@ class SalesysApi {
     }
 
     const url = `https://app.salesys.se/api/offers/offers-v1/count?${queryParams}`;
-    const response = await this.apiCall<{ count: number }>(url);
+    const response = await this.apiCall(url);
     return response.count;
   }
 
@@ -419,11 +420,11 @@ class SalesysApi {
     }
 
     const url = `https://app.salesys.se/api/dial/calls-v1?${queryParams}`;
-    const response = await this.apiCall<{ calls: Call[] }>(url);
+    const response = await this.apiCall(url);
 
     // Get total count
     const countUrl = `https://app.salesys.se/api/dial/calls-v1/count?${queryParams}`;
-    const countResponse = await this.apiCall<{ count: number }>(countUrl);
+    const countResponse = await this.apiCall(countUrl);
 
     return {
       data: response.calls,
@@ -435,7 +436,7 @@ class SalesysApi {
 
   async getCallTags(): Promise<Tag[]> {
     const url = 'https://app.salesys.se/api/dial/tags-v1';
-    const response = await this.apiCall<{ tags: Tag[] }>(url);
+    const response = await this.apiCall(url);
     return response.tags;
   }
 
@@ -471,11 +472,11 @@ class SalesysApi {
     }
 
     const url = `https://app.salesys.se/api/orders/orders-v3?${queryParams}`;
-    const data = await this.apiCall<Order[]>(url);
+    const data = await this.apiCall(url);
 
     // Get total count
     const countUrl = `https://app.salesys.se/api/orders/orders-v2/count?${queryParams}`;
-    const countResponse = await this.apiCall<{ count: number }>(countUrl);
+    const countResponse = await this.apiCall(countUrl);
 
     return {
       data,
@@ -487,7 +488,7 @@ class SalesysApi {
 
   async getOrderTags(): Promise<Tag[]> {
     const url = 'https://app.salesys.se/api/orders/tags-v1';
-    return this.apiCall<Tag[]>(url);
+    return this.apiCall(url);
   }
 
   // Dial Groups API
@@ -503,7 +504,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/dial/dial-groups-v2?${queryParams}`;
-    const data = await this.apiCall<DialGroup[]>(url);
+    const data = await this.apiCall(url);
 
     return {
       data,
@@ -519,7 +520,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/dial/dial-group-contacts-v1/summaries?${queryParams}`;
-    return this.apiCall<DialGroupSummary[]>(url);
+    return this.apiCall(url);
   }
 
   // Statistics API
@@ -536,7 +537,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/offers/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   // Call Statistics API
@@ -553,7 +554,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/dial/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   // Order Statistics API
@@ -570,7 +571,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/orders/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   async getOfferStatistics(params: {
@@ -585,7 +586,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/offers/statistics-v1/own/issue_1238_2?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   async getCallStatisticsHourly(params: {
@@ -600,7 +601,7 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/dial/statistics-v1/own/issue_1238_2?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   async getOrderStatisticsHourly(params: {
@@ -615,30 +616,30 @@ class SalesysApi {
     });
 
     const url = `https://app.salesys.se/api/orders/statistics-v1/own/issue_1238_2?${queryParams}`;
-    return this.apiCall<StatisticsData[]>(url);
+    return this.apiCall(url);
   }
 
   // Users API
   async getUsers(): Promise<User[]> {
     const url = 'https://app.salesys.se/api/users/users-v1';
-    return this.apiCall<User[]>(url);
+    return this.apiCall(url);
   }
 
   // Teams API
   async getTeams(): Promise<Team[]> {
     const url = 'https://app.salesys.se/api/users/teams-v1';
-    return this.apiCall<Team[]>(url);
+    return this.apiCall(url);
   }
 
   // Dashboards API
   async getDashboards(): Promise<Dashboard[]> {
     const url = 'https://app.salesys.se/api/users/dashboards-v1';
-    return this.apiCall<Dashboard[]>(url);
+    return this.apiCall(url);
   }
 
   async getDashboardResults(dashboardId: string): Promise<DashboardResult[]> {
     const url = `https://app.salesys.se/api/users/dashboards-v1/${dashboardId}/results`;
-    return this.apiCall<DashboardResult[]>(url, 'POST');
+    return this.apiCall(url, 'POST');
   }
 
   async updateDashboardGroupBy(dashboardId: string, groupBy: 'user' | 'team' | 'leadList' | null): Promise<void> {
