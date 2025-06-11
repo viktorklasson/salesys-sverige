@@ -145,7 +145,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="max-w-md mx-auto p-8 bg-white rounded-xl shadow-md border" style={{fontFamily: 'Nunito, sans-serif'}}>
           <div className="text-center">
-            <div className="w-32 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
             <h2 className="text-2xl font-light text-gray-900 mb-2">Välkommen tillbaka!</h2>
