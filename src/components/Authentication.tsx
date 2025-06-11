@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -57,8 +56,8 @@ export class AuthUtils {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': supabase.supabaseKey,
-          'authorization': `Bearer ${supabase.supabaseKey}`
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0ZWhxZGFpeG95cXNybm9jcmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NjQ0NzQsImV4cCI6MjA1NzQ0MDQ3NH0.pKk9Ec2DokTQVCyu0BYaRrkTWpcjR72b__Z-2CH3leM',
+          'authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0ZWhxZGFpeG95cXNybm9jcmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NjQ0NzQsImV4cCI6MjA1NzQ0MDQ3NH0.pKk9Ec2DokTQVCyu0BYaRrkTWpcjR72b__Z-2CH3leM`
         },
         credentials: 'include',
         body: JSON.stringify({
