@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { salesysApi, Dashboard, DashboardResult } from '@/services/salesysApi';
+import { salesysApi, Dashboard, DashboardResult } from '@/SaleSys';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 

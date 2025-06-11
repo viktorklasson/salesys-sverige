@@ -4,7 +4,7 @@ import { AuthForm, useAuth } from '@/components/Authentication';
 import Dashboard from '@/components/Dashboard';
 
 const Index = () => {
-  const { isAuthenticated, isCheckingAuth, handleAuthenticated } = useAuth();
+  const { isAuthenticated, isCheckingAuth } = useAuth();
 
   const handleStatisticsClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
     console.log('Statistics clicked:', statType);
@@ -23,7 +23,7 @@ const Index = () => {
   }
 
   if (!isAuthenticated) {
-    return <AuthForm onAuthenticated={handleAuthenticated} />;
+    return <AuthForm />;
   }
 
   return <Dashboard onStatisticsClick={handleStatisticsClick} />;
