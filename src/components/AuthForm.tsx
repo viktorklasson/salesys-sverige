@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -149,7 +148,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-light text-gray-900 mb-2">Välkommen tillbaka!</h2>
+            <h2 className="text-xl md:text-2xl font-light text-gray-900 mb-2" style={{ fontSize: window.innerWidth < 768 ? '1.4rem' : undefined }}>Välkommen tillbaka!</h2>
             <p className="text-gray-600 mb-6 font-light">Du är inloggad.</p>
             
             <button
@@ -174,7 +173,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
             alt="Salesys Logo" 
             className="w-8 h-8 mx-auto mb-4 border-0"
           />
-          <h2 className="text-2xl font-light text-gray-900">
+          <h2 className="text-xl md:text-2xl font-light text-gray-900" style={{ fontSize: window.innerWidth < 768 ? '1.4rem' : undefined }}>
             {showResetPassword ? 'Återställ lösenord' : 'Välkommen till SaleSys'}
           </h2>
           <p className="text-gray-600 mt-2 font-light">
