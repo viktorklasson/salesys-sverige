@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthFormProps {
   onAuthenticated: () => void;
 }
 
 const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
+  const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [showResetPassword, setShowResetPassword] = useState(false);
@@ -37,11 +38,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       setIsLoggedIn(hasAuthCookie);
       if (hasAuthCookie) {
         onAuthenticated();
+        navigate('/');
       }
     };
     
     checkAuthStatus();
-  }, [onAuthenticated]);
+  }, [onAuthenticated, navigate]);
 
   // Simple proxy function using query parameter
   const makeProxyRequest = async (endpoint: string, data?: any, method = 'POST') => {
@@ -86,6 +88,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
         onAuthenticated();
+        navigate('/');
       } else {
         setError('Invalid credentials. Please try again.');
       }
@@ -133,6 +136,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     
     setIsLoggedIn(false);
     setSuccess('Successfully logged out!');
+    navigate('/login');
   };
 
   // If user is logged in, show logged in state

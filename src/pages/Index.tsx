@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { salesysApi } from '@/services/salesysApi';
 import AuthForm from '@/components/AuthForm';
 import Dashboard from '@/components/Dashboard';
@@ -9,12 +10,18 @@ const Index = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const token = salesysApi.getBearerToken();
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setIsCheckingAuth(false);
+    // Check if user is already authenticated by checking cookies
+    const checkAuthStatus = () => {
+      const cookies = document.cookie.split(';');
+      const hasAuthCookie = cookies.some(cookie => 
+        cookie.trim().startsWith('s2_utoken=') || 
+        cookie.trim().startsWith('s2_uid=')
+      );
+      setIsAuthenticated(hasAuthCookie);
+      setIsCheckingAuth(false);
+    };
+    
+    checkAuthStatus();
   }, []);
 
   const handleAuthenticated = () => {
