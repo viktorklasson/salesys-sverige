@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -52,25 +53,28 @@ export class AuthUtils {
   // Use Supabase Edge Function for proxy requests
   static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<Response> {
     try {
-      const response = await fetch('/api/functions/v1/salesys-proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0ZWhxZGFpeG95cXNybm9jcmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NjQ0NzQsImV4cCI6MjA1NzQ0MDQ3NH0.pKk9Ec2DokTQVCyu0BYaRrkTWpcjR72b__Z-2CH3leM',
-          'authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0ZWhxZGFpeG95cXNybm9jcmJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE4NjQ0NzQsImV4cCI6MjA1NzQ0MDQ3NH0.pKk9Ec2DokTQVCyu0BYaRrkTWpcjR72b__Z-2CH3leM`
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('salesys-proxy', {
+        body: {
           url: endpoint,
           method: method,
           data: data,
           headers: {
             'Content-Type': 'application/json',
           }
-        })
+        }
       });
       
-      return response;
+      if (response.error) {
+        throw new Error(`Proxy request failed: ${response.error.message}`);
+      }
+      
+      // Create a Response-like object to maintain compatibility
+      return {
+        ok: !response.error,
+        status: response.error ? 500 : 200,
+        json: async () => response.data,
+        text: async () => JSON.stringify(response.data)
+      } as Response;
       
     } catch (error) {
       console.error('Proxy request failed:', error);
