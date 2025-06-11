@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -35,10 +34,13 @@ export class AuthUtils {
   // Check if user is authenticated by checking cookies
   static checkAuthStatus(): boolean {
     const cookies = document.cookie.split(';');
-    return cookies.some(cookie => 
+    const hasAuthCookie = cookies.some(cookie => 
       cookie.trim().startsWith('s2_utoken=') || 
       cookie.trim().startsWith('s2_uid=')
     );
+    console.log('Checking auth status, cookies found:', hasAuthCookie);
+    console.log('All cookies:', document.cookie);
+    return hasAuthCookie;
   }
 
   // Clear all authentication cookies
@@ -51,8 +53,10 @@ export class AuthUtils {
   }
 
   // Use Supabase Edge Function for proxy requests
-  static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<Response> {
+  static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<any> {
     try {
+      console.log('Making proxy request to:', endpoint, 'with data:', data);
+      
       const response = await supabase.functions.invoke('salesys-proxy', {
         body: {
           url: endpoint,
@@ -64,17 +68,14 @@ export class AuthUtils {
         }
       });
       
+      console.log('Edge function response:', response);
+      
       if (response.error) {
+        console.error('Edge function error:', response.error);
         throw new Error(`Proxy request failed: ${response.error.message}`);
       }
       
-      // Create a Response-like object to maintain compatibility
-      return {
-        ok: !response.error,
-        status: response.error ? 500 : 200,
-        json: async () => response.data,
-        text: async () => JSON.stringify(response.data)
-      } as Response;
+      return response.data;
       
     } catch (error) {
       console.error('Proxy request failed:', error);
@@ -85,18 +86,23 @@ export class AuthUtils {
   // Login function
   static async login(loginData: LoginData): Promise<boolean> {
     try {
-      const response = await this.makeProxyRequest(
+      console.log('Attempting login with:', loginData.username);
+      
+      const responseData = await this.makeProxyRequest(
         'https://app.salesys.se/api/users/login-v1',
         loginData
       );
       
-      if (response.ok) {
-        // Wait a bit for cookies to be set
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return this.checkAuthStatus();
-      }
+      console.log('Login response data:', responseData);
       
-      return false;
+      // Wait a bit for cookies to be set by the edge function
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check if cookies were set
+      const authStatus = this.checkAuthStatus();
+      console.log('Auth status after login:', authStatus);
+      
+      return authStatus;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -106,12 +112,12 @@ export class AuthUtils {
   // Password reset function
   static async resetPassword(resetData: ResetData): Promise<boolean> {
     try {
-      const response = await this.makeProxyRequest(
+      const responseData = await this.makeProxyRequest(
         'https://app.salesys.se/api/users/password-reset-v1/request',
         resetData
       );
       
-      return response.ok;
+      return !!responseData; // Convert to boolean
     } catch (error) {
       console.error('Password reset error:', error);
       throw error;
@@ -185,18 +191,19 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful, checking cookies...');
+        console.log('Login successful, cookies detected');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
         onAuthenticated();
         navigate('/');
       } else {
-        setError('Invalid credentials. Please try again.');
+        console.log('Login failed - no auth cookies found');
+        setError('Invalid credentials. Please check your username and password.');
       }
     } catch (error) {
-      setError('Login failed. Please check your connection and try again.');
       console.error('Login error:', error);
+      setError('Login failed. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
