@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import AuthForm from '@/components/AuthForm';
+import { AuthForm } from '@/components/Authentication';
 
 interface LoginProps {
   isAuthenticated?: boolean;

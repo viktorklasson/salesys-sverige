@@ -1,35 +1,17 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useAuth, ProtectedRoute } from "@/components/Authentication";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  useEffect(() => {
-    // Check if user is already authenticated by checking cookies
-    const checkAuthStatus = () => {
-      const cookies = document.cookie.split(';');
-      const hasAuthCookie = cookies.some(cookie => 
-        cookie.trim().startsWith('s2_utoken=') || 
-        cookie.trim().startsWith('s2_uid=')
-      );
-      setIsAuthenticated(hasAuthCookie);
-      setIsCheckingAuth(false);
-    };
-    
-    checkAuthStatus();
-  }, []);
+  const { isAuthenticated, isCheckingAuth } = useAuth();
 
   if (isCheckingAuth) {
     return (

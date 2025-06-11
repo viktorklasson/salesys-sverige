@@ -1,36 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { salesysApi } from '@/services/salesysApi';
-import AuthForm from '@/components/AuthForm';
+import React from 'react';
+import { AuthForm, useAuth } from '@/components/Authentication';
 import Dashboard from '@/components/Dashboard';
 
 const Index = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-
-  useEffect(() => {
-    // Check if user is already authenticated by checking cookies
-    const checkAuthStatus = () => {
-      const cookies = document.cookie.split(';');
-      const hasAuthCookie = cookies.some(cookie => 
-        cookie.trim().startsWith('s2_utoken=') || 
-        cookie.trim().startsWith('s2_uid=')
-      );
-      setIsAuthenticated(hasAuthCookie);
-      setIsCheckingAuth(false);
-    };
-    
-    checkAuthStatus();
-  }, []);
-
-  const handleAuthenticated = () => {
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
+  const { isAuthenticated, isCheckingAuth, handleAuthenticated } = useAuth();
 
   const handleStatisticsClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
     console.log('Statistics clicked:', statType);

@@ -1,18 +1,4 @@
 
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  isAuthenticated: boolean;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, isAuthenticated }) => {
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-export default ProtectedRoute;
+// This file has been moved to Authentication.tsx for better reusability
+// Import from Authentication.tsx instead
+export { ProtectedRoute as default } from './Authentication';
