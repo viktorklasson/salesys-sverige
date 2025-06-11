@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Credentials': 'true'
 }
 
 serve(async (req) => {
@@ -30,7 +31,8 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         ...headers
-      }
+      },
+      credentials: 'include'
     }
 
     if (data && (method === 'POST' || method === 'PUT')) {
@@ -40,19 +42,19 @@ serve(async (req) => {
     const response = await fetch(url, requestOptions)
     const responseData = await response.text()
 
-    // Forward cookies from the response
+    // Get cookies from the response
     const setCookieHeaders = response.headers.getSetCookie?.() || []
-    const responseHeaders = {
+    
+    // Prepare response headers
+    const responseHeaders = new Headers({
       ...corsHeaders,
       'Content-Type': response.headers.get('content-type') || 'application/json'
-    }
+    })
 
-    // Add Set-Cookie headers if they exist
-    if (setCookieHeaders.length > 0) {
-      setCookieHeaders.forEach((cookie, index) => {
-        responseHeaders[`Set-Cookie${index > 0 ? `-${index}` : ''}`] = cookie
-      })
-    }
+    // Forward Set-Cookie headers properly
+    setCookieHeaders.forEach(cookie => {
+      responseHeaders.append('Set-Cookie', cookie)
+    })
 
     return new Response(responseData, {
       status: response.status,

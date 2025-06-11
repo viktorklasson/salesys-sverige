@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -44,6 +45,7 @@ export class AuthUtils {
   static clearAuthCookies(): void {
     const cookies = ['s2_utoken', 's2_uid', 's2_uname'];
     cookies.forEach(cookieName => {
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
       document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     });
   }
@@ -51,28 +53,25 @@ export class AuthUtils {
   // Use Supabase Edge Function for proxy requests
   static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<Response> {
     try {
-      const response = await supabase.functions.invoke('salesys-proxy', {
-        body: {
+      const response = await fetch('/api/functions/v1/salesys-proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabase.supabaseKey,
+          'authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
           url: endpoint,
           method: method,
           data: data,
           headers: {
             'Content-Type': 'application/json',
           }
-        }
+        })
       });
       
-      if (response.error) {
-        throw new Error(`Proxy error: ${response.error.message}`);
-      }
-      
-      // Create a mock Response object with the data
-      return {
-        ok: !response.error,
-        status: response.error ? 500 : 200,
-        json: async () => response.data,
-        text: async () => JSON.stringify(response.data)
-      } as Response;
+      return response;
       
     } catch (error) {
       console.error('Proxy request failed:', error);
@@ -88,7 +87,13 @@ export class AuthUtils {
         loginData
       );
       
-      return response.ok;
+      if (response.ok) {
+        // Wait a bit for cookies to be set
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return this.checkAuthStatus();
+      }
+      
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -152,6 +157,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
   useEffect(() => {
     const checkAuthStatus = () => {
       const hasAuthCookie = AuthUtils.checkAuthStatus();
+      console.log('Auth status check:', hasAuthCookie);
       setIsLoggedIn(hasAuthCookie);
       if (hasAuthCookie) {
         onAuthenticated();
@@ -160,6 +166,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     };
     
     checkAuthStatus();
+
+    // Check auth status periodically to handle cookie expiration
+    const interval = setInterval(checkAuthStatus, 5000);
+    return () => clearInterval(interval);
   }, [onAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -168,9 +178,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     setError('');
     
     try {
+      console.log('Attempting login...');
       const success = await AuthUtils.login(loginData);
       
       if (success) {
+        console.log('Login successful, checking cookies...');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
@@ -404,11 +416,16 @@ export const useAuth = () => {
   useEffect(() => {
     const checkAuthStatus = () => {
       const hasAuthCookie = AuthUtils.checkAuthStatus();
+      console.log('useAuth hook - Auth status:', hasAuthCookie);
       setIsAuthenticated(hasAuthCookie);
       setIsCheckingAuth(false);
     };
     
     checkAuthStatus();
+
+    // Check auth status periodically
+    const interval = setInterval(checkAuthStatus, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAuthenticated = () => {
