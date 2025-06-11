@@ -449,7 +449,7 @@ class SalesysApi {
     const countUrl = `https://app.salesys.se/api/dial/calls-v1/count?${queryParams}`;
     const countResponse = await this.apiCall(countUrl);
 
-    return {
+    return {\
       data: response.calls,
       total: countResponse.count,
       offset: params?.offset || 0,
@@ -672,5 +672,3 @@ class SalesysApi {
 }
 
 export const salesysApi = new SalesysApi();
-
-}
