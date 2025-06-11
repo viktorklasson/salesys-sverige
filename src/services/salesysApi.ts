@@ -1,4 +1,3 @@
-
 /* SaleSys API integration service
  * 
  * API References for future use:
@@ -39,7 +38,7 @@
  * - GET https://app.salesys.se/api/users/teams-v1
  */
 
-const PROXY_URL = 'https://salesys.se/api/tools/proxy.php';
+const PROXY_URL = 'https://salesys.se/api/v2/proxy.php';
 
 interface ApiResponse<T> {
   data: T;
