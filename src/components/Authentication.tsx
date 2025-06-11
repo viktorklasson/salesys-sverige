@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -48,25 +48,32 @@ export class AuthUtils {
     });
   }
 
-  // Simple proxy function using query parameter
+  // Use Supabase Edge Function for proxy requests
   static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<Response> {
-    const proxyUrl = `https://salesys.se/api/v2/proxy.php?url=${encodeURIComponent(endpoint)}`;
-    
     try {
-      const response = await fetch(proxyUrl, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: data ? JSON.stringify(data) : undefined,
-        credentials: 'include' // Important for cookies
+      const response = await supabase.functions.invoke('salesys-proxy', {
+        body: {
+          url: endpoint,
+          method: method,
+          data: data,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.error) {
+        throw new Error(`Proxy error: ${response.error.message}`);
       }
       
-      return response;
+      // Create a mock Response object with the data
+      return {
+        ok: !response.error,
+        status: response.error ? 500 : 200,
+        json: async () => response.data,
+        text: async () => JSON.stringify(response.data)
+      } as Response;
+      
     } catch (error) {
       console.error('Proxy request failed:', error);
       throw error;
@@ -164,8 +171,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        // The proxy should forward the Set-Cookie headers
-        // The browser will automatically set the cookies
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
@@ -427,3 +432,5 @@ export const useAuth = () => {
 // ============================================================================
 
 export default AuthForm;
+
+// EOF

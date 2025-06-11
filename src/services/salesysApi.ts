@@ -38,7 +38,7 @@
  * - GET https://app.salesys.se/api/users/teams-v1
  */
 
-const PROXY_URL = 'https://salesys.se/api/v2/proxy.php';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ApiResponse<T> {
   data: T;
@@ -290,33 +290,34 @@ class SalesysApi {
       throw new Error('Ingen bearer token tillgänglig. Vänligen logga in.');
     }
 
-    // Add cache busting to the URL before encoding
+    // Add cache busting to the URL
     const urlWithCacheBusting = this.addCacheBusting(endpoint);
-    const proxyUrl = `${PROXY_URL}?url=${encodeURIComponent(urlWithCacheBusting)}`;
     
-    const requestOptions: RequestInit = {
-      method,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      },
-      credentials: 'include', // Include cookies in requests
-    };
+    try {
+      const response = await supabase.functions.invoke('salesys-proxy', {
+        body: {
+          url: urlWithCacheBusting,
+          method,
+          data,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        }
+      });
 
-    if (data && (method === 'POST' || method === 'PUT')) {
-      requestOptions.body = JSON.stringify(data);
+      if (response.error) {
+        throw new Error(`API fel: ${response.error.message}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('API call failed:', error);
+      throw error;
     }
-
-    const response = await fetch(proxyUrl, requestOptions);
-
-    if (!response.ok) {
-      throw new Error(`API fel: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
   }
 
   // Get today's date range in Swedish timezone
@@ -671,3 +672,5 @@ class SalesysApi {
 }
 
 export const salesysApi = new SalesysApi();
+
+}
