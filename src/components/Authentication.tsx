@@ -39,8 +39,8 @@ export class AuthUtils {
     
     const authCookies = cookies.filter(cookie => {
       const trimmed = cookie.trim();
-      const hasToken = trimmed.startsWith('s2_utoken=');
-      const hasUid = trimmed.startsWith('s2_uid=');
+      const hasToken = trimmed.startsWith('s2_utoken=') && trimmed.length > 's2_utoken='.length;
+      const hasUid = trimmed.startsWith('s2_uid=') && trimmed.length > 's2_uid='.length;
       console.log('Cookie:', trimmed, 'hasToken:', hasToken, 'hasUid:', hasUid);
       return hasToken || hasUid;
     });
@@ -104,45 +104,37 @@ export class AuthUtils {
       
       console.log('Login response data:', responseData);
       
-      // Check cookies immediately
-      console.log('Cookies immediately after response:', document.cookie);
-      
-      // Wait longer for cookies to be properly set
-      console.log('Waiting for cookies to be set...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check cookies again
-      console.log('Cookies after waiting:', document.cookie);
-      
-      // Check if cookies were set multiple times with different delays
-      let authStatus = this.checkAuthStatus();
-      console.log('Auth status after login (first check):', authStatus);
-      
-      if (!authStatus) {
-        console.log('First check failed, waiting a bit more...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-        authStatus = this.checkAuthStatus();
-        console.log('Auth status after login (second check):', authStatus);
-      }
-      
-      // If we got "OK" response but no cookies, consider it a success anyway
-      if (!authStatus && responseData === "OK") {
-        console.log('Response was OK but no cookies detected yet, will try again');
-        // Set a flag that we should check again soon
-        setTimeout(() => {
-          const finalCheck = this.checkAuthStatus();
-          console.log('Delayed auth check result:', finalCheck);
-          if (finalCheck) {
-            console.log('Cookies appeared after delay, refreshing page');
-            window.location.reload();
-          }
-        }, 2000);
+      // Check if we got a successful response
+      if (responseData === "OK") {
+        console.log('Login response was OK, waiting for cookies to be set...');
         
-        // Return true if we got OK response, even if cookies aren't detected yet
-        return responseData === "OK";
+        // Wait for cookies to be properly set
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Check cookies multiple times to ensure they're detected
+        let authStatus = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!authStatus && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          authStatus = this.checkAuthStatus();
+          attempts++;
+          console.log(`Auth check attempt ${attempts}:`, authStatus);
+        }
+        
+        if (authStatus) {
+          console.log('Cookies detected successfully after', attempts, 'attempts');
+          return true;
+        } else {
+          console.log('Cookies not detected after', maxAttempts, 'attempts, but response was OK');
+          // Return true since the server confirmed login was successful
+          return true;
+        }
+      } else {
+        console.log('Login failed - response was not OK:', responseData);
+        return false;
       }
-      
-      return authStatus;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -216,8 +208,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     
     checkAuthStatus();
 
-    // Check auth status periodically to handle cookie expiration
-    const interval = setInterval(checkAuthStatus, 5000);
+    // Check auth status less frequently to avoid interference
+    const interval = setInterval(checkAuthStatus, 10000);
     return () => clearInterval(interval);
   }, [onAuthenticated, navigate]);
 
@@ -231,14 +223,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful, cookies detected');
+        console.log('Login successful');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
         onAuthenticated();
-        navigate('/');
+        
+        // Use replace to avoid back button issues
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 500);
       } else {
-        console.log('Login failed - no auth cookies found');
+        console.log('Login failed');
         setError('Invalid credentials. Please check your username and password.');
       }
     } catch (error) {
@@ -473,8 +469,8 @@ export const useAuth = () => {
     
     checkAuthStatus();
 
-    // Check auth status periodically
-    const interval = setInterval(checkAuthStatus, 5000);
+    // Check auth status less frequently to avoid interference
+    const interval = setInterval(checkAuthStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
