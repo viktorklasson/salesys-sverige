@@ -34,12 +34,21 @@ export class AuthUtils {
   // Check if user is authenticated by checking cookies
   static checkAuthStatus(): boolean {
     const cookies = document.cookie.split(';');
-    const hasAuthCookie = cookies.some(cookie => 
-      cookie.trim().startsWith('s2_utoken=') || 
-      cookie.trim().startsWith('s2_uid=')
-    );
+    console.log('Raw cookies:', document.cookie);
+    console.log('Parsed cookies array:', cookies);
+    
+    const authCookies = cookies.filter(cookie => {
+      const trimmed = cookie.trim();
+      const hasToken = trimmed.startsWith('s2_utoken=');
+      const hasUid = trimmed.startsWith('s2_uid=');
+      console.log('Cookie:', trimmed, 'hasToken:', hasToken, 'hasUid:', hasUid);
+      return hasToken || hasUid;
+    });
+    
+    console.log('Found auth cookies:', authCookies);
+    const hasAuthCookie = authCookies.length > 0;
     console.log('Checking auth status, cookies found:', hasAuthCookie);
-    console.log('All cookies:', document.cookie);
+    
     return hasAuthCookie;
   }
 
@@ -95,12 +104,43 @@ export class AuthUtils {
       
       console.log('Login response data:', responseData);
       
-      // Wait a bit for cookies to be set by the edge function
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Check cookies immediately
+      console.log('Cookies immediately after response:', document.cookie);
       
-      // Check if cookies were set
-      const authStatus = this.checkAuthStatus();
-      console.log('Auth status after login:', authStatus);
+      // Wait longer for cookies to be properly set
+      console.log('Waiting for cookies to be set...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check cookies again
+      console.log('Cookies after waiting:', document.cookie);
+      
+      // Check if cookies were set multiple times with different delays
+      let authStatus = this.checkAuthStatus();
+      console.log('Auth status after login (first check):', authStatus);
+      
+      if (!authStatus) {
+        console.log('First check failed, waiting a bit more...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        authStatus = this.checkAuthStatus();
+        console.log('Auth status after login (second check):', authStatus);
+      }
+      
+      // If we got "OK" response but no cookies, consider it a success anyway
+      if (!authStatus && responseData === "OK") {
+        console.log('Response was OK but no cookies detected yet, will try again');
+        // Set a flag that we should check again soon
+        setTimeout(() => {
+          const finalCheck = this.checkAuthStatus();
+          console.log('Delayed auth check result:', finalCheck);
+          if (finalCheck) {
+            console.log('Cookies appeared after delay, refreshing page');
+            window.location.reload();
+          }
+        }, 2000);
+        
+        // Return true if we got OK response, even if cookies aren't detected yet
+        return responseData === "OK";
+      }
       
       return authStatus;
     } catch (error) {
