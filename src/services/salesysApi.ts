@@ -240,12 +240,34 @@ export interface DashboardResult {
 class SalesysApi {
   private bearerToken: string | null = null;
 
+  // Extract bearer token from cookies
+  private extractBearerTokenFromCookies(): string | null {
+    const cookies = document.cookie.split(';');
+    
+    for (const cookie of cookies) {
+      const trimmedCookie = cookie.trim();
+      if (trimmedCookie.startsWith('s2_utoken=')) {
+        return trimmedCookie.substring('s2_utoken='.length);
+      }
+    }
+    
+    return null;
+  }
+
   setBearerToken(token: string) {
     this.bearerToken = token;
     localStorage.setItem('salesys_bearer_token', token);
   }
 
   getBearerToken(): string | null {
+    // First try to get from cookies
+    const cookieToken = this.extractBearerTokenFromCookies();
+    if (cookieToken) {
+      this.bearerToken = cookieToken;
+      return cookieToken;
+    }
+
+    // Fall back to stored token
     if (!this.bearerToken) {
       this.bearerToken = localStorage.getItem('salesys_bearer_token');
     }
@@ -282,6 +304,7 @@ class SalesysApi {
         'Pragma': 'no-cache',
         'Expires': '0'
       },
+      credentials: 'include', // Include cookies in requests
     };
 
     if (data && (method === 'POST' || method === 'PUT')) {
