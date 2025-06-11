@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Dashboard } from '@/services/salesysApi';
+import { Dashboard } from '@/SaleSys';
 
 interface DashboardListCardProps {
   dashboard: Dashboard;

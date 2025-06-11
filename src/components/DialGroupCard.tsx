@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { DialGroup, DialGroupSummary } from '@/services/salesysApi';
+import { DialGroup, DialGroupSummary } from '@/SaleSys';
 import { Users, Phone, UserCheck, Clock } from 'lucide-react';
 
 interface DialGroupCardProps {
