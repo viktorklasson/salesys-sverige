@@ -35,19 +35,17 @@ export class AuthUtils {
   static checkAuthStatus(): boolean {
     const cookies = document.cookie.split(';');
     console.log('Raw cookies:', document.cookie);
-    console.log('Parsed cookies array:', cookies);
     
     const authCookies = cookies.filter(cookie => {
       const trimmed = cookie.trim();
       const hasToken = trimmed.startsWith('s2_utoken=') && trimmed.length > 's2_utoken='.length;
       const hasUid = trimmed.startsWith('s2_uid=') && trimmed.length > 's2_uid='.length;
-      console.log('Cookie:', trimmed, 'hasToken:', hasToken, 'hasUid:', hasUid);
       return hasToken || hasUid;
     });
     
     console.log('Found auth cookies:', authCookies);
     const hasAuthCookie = authCookies.length > 0;
-    console.log('Checking auth status, cookies found:', hasAuthCookie);
+    console.log('Auth status:', hasAuthCookie);
     
     return hasAuthCookie;
   }
@@ -194,11 +192,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     lastIdentityNumberDigits: ''
   });
 
-  // Check if user is already logged in by checking cookies
+  // Single auth status check on mount only
   useEffect(() => {
-    const checkAuthStatus = () => {
+    const checkInitialAuth = () => {
       const hasAuthCookie = AuthUtils.checkAuthStatus();
-      console.log('Auth status check:', hasAuthCookie);
+      console.log('Initial auth check:', hasAuthCookie);
       setIsLoggedIn(hasAuthCookie);
       if (hasAuthCookie) {
         onAuthenticated();
@@ -206,11 +204,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       }
     };
     
-    checkAuthStatus();
-
-    // Check auth status less frequently to avoid interference
-    const interval = setInterval(checkAuthStatus, 10000);
-    return () => clearInterval(interval);
+    checkInitialAuth();
   }, [onAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -223,16 +217,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful');
+        console.log('Login successful, setting logged in state');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
+        
+        // Call onAuthenticated immediately
         onAuthenticated();
         
-        // Use replace to avoid back button issues
+        // Navigate after a short delay to show success message
         setTimeout(() => {
           navigate('/', { replace: true });
-        }, 500);
+        }, 1000);
       } else {
         console.log('Login failed');
         setError('Invalid credentials. Please check your username and password.');
@@ -287,6 +283,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
             </div>
             <h2 className="text-xl md:text-2xl font-light text-gray-900 mb-2" style={{ fontSize: window.innerWidth < 768 ? '1.4rem' : undefined }}>Välkommen tillbaka!</h2>
             <p className="text-gray-600 mb-6 font-light">Du är inloggad.</p>
+            
+            {success && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-green-800 text-sm">{success}</p>
+              </div>
+            )}
             
             <button
               onClick={handleLogout}
@@ -467,14 +469,16 @@ export const useAuth = () => {
       setIsCheckingAuth(false);
     };
     
+    // Initial check
     checkAuthStatus();
 
-    // Check auth status less frequently to avoid interference
-    const interval = setInterval(checkAuthStatus, 10000);
+    // Only check every 30 seconds instead of 10 to reduce interference
+    const interval = setInterval(checkAuthStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const handleAuthenticated = () => {
+    console.log('handleAuthenticated called');
     setIsAuthenticated(true);
   };
 
