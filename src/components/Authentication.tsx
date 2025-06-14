@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -107,28 +108,21 @@ export class AuthUtils {
         console.log('Login response was OK, waiting for cookies to be set...');
         
         // Wait for cookies to be properly set
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check cookies multiple times to ensure they're detected
         let authStatus = false;
         let attempts = 0;
-        const maxAttempts = 5;
+        const maxAttempts = 3;
         
         while (!authStatus && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+          await new Promise(resolve => setTimeout(resolve, 500));
           authStatus = this.checkAuthStatus();
           attempts++;
           console.log(`Auth check attempt ${attempts}:`, authStatus);
         }
         
-        if (authStatus) {
-          console.log('Cookies detected successfully after', attempts, 'attempts');
-          return true;
-        } else {
-          console.log('Cookies not detected after', maxAttempts, 'attempts, but response was OK');
-          // Return true since the server confirmed login was successful
-          return true;
-        }
+        return true; // Always return true if server response was OK
       } else {
         console.log('Login failed - response was not OK:', responseData);
         return false;
@@ -192,19 +186,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     lastIdentityNumberDigits: ''
   });
 
-  // Single auth status check on mount only
+  // Only check auth status on mount - no interval checks
   useEffect(() => {
-    const checkInitialAuth = () => {
-      const hasAuthCookie = AuthUtils.checkAuthStatus();
-      console.log('Initial auth check:', hasAuthCookie);
-      setIsLoggedIn(hasAuthCookie);
-      if (hasAuthCookie) {
-        onAuthenticated();
-        navigate('/');
-      }
-    };
-    
-    checkInitialAuth();
+    const hasAuthCookie = AuthUtils.checkAuthStatus();
+    console.log('Initial auth check:', hasAuthCookie);
+    setIsLoggedIn(hasAuthCookie);
+    if (hasAuthCookie) {
+      onAuthenticated();
+      navigate('/');
+    }
   }, [onAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -217,18 +207,14 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful, setting logged in state');
+        console.log('Login successful, setting states');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
         
-        // Call onAuthenticated immediately
+        // Call onAuthenticated and navigate immediately
         onAuthenticated();
-        
-        // Navigate after a short delay to show success message
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 1000);
+        navigate('/', { replace: true });
       } else {
         console.log('Login failed');
         setError('Invalid credentials. Please check your username and password.');
@@ -462,19 +448,11 @@ export const useAuth = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const checkAuthStatus = () => {
-      const hasAuthCookie = AuthUtils.checkAuthStatus();
-      console.log('useAuth hook - Auth status:', hasAuthCookie);
-      setIsAuthenticated(hasAuthCookie);
-      setIsCheckingAuth(false);
-    };
-    
-    // Initial check
-    checkAuthStatus();
-
-    // Only check every 30 seconds instead of 10 to reduce interference
-    const interval = setInterval(checkAuthStatus, 30000);
-    return () => clearInterval(interval);
+    // Only check once on mount
+    const hasAuthCookie = AuthUtils.checkAuthStatus();
+    console.log('useAuth hook - Initial auth status:', hasAuthCookie);
+    setIsAuthenticated(hasAuthCookie);
+    setIsCheckingAuth(false);
   }, []);
 
   const handleAuthenticated = () => {
