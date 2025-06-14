@@ -19,6 +19,7 @@ import { sv } from 'date-fns/locale';
 import DashboardCard from './DashboardCard';
 import DashboardListCard from './DashboardListCard';
 import DashboardDetailView from './DashboardDetailView';
+import StatisticsView from './StatisticsView';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -53,9 +54,10 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'welcome' | 'section' | 'dashboard'>('welcome');
+  const [currentView, setCurrentView] = useState<'welcome' | 'section' | 'dashboard' | 'statistics'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
   const [selectedDashboard, setSelectedDashboard] = useState<any>(null);
+  const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar' | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [avtalsData, setAvtalsData] = useState<Array<{ date: string; value: number }>>([]);
   const [samtalData, setSamtalData] = useState<Array<{ date: string; value: number }>>([]);
@@ -341,15 +343,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     setCurrentView('dashboard');
   };
 
+  const handleStatisticsClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
+    console.log('Statistics clicked:', statType);
+    setSelectedStatType(statType);
+    setCurrentView('statistics');
+    // Also call the parent's onStatisticsClick for any additional handling
+    onStatisticsClick(statType);
+  };
+
   const handleBackToWelcome = () => {
     setCurrentView('welcome');
     setSelectedDashboard(null);
+    setSelectedStatType(null);
     setDashboardResults(null);
   };
 
   const handleBackToSection = () => {
     setCurrentView('section');
     setSelectedDashboard(null);
+    setSelectedStatType(null);
     setDashboardResults(null);
   };
 
@@ -395,7 +407,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               isLoading={!avtalsData.length}
               color="green"
               chartData={croppedAvtalsData}
-              onClick={() => onStatisticsClick('avtal')}
+              onClick={() => handleStatisticsClick('avtal')}
               showLiveDot={isSelectedDateToday}
             />
             
@@ -405,7 +417,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               isLoading={!samtalData.length}
               color="blue"
               chartData={croppedSamtalData}
-              onClick={() => onStatisticsClick('samtal')}
+              onClick={() => handleStatisticsClick('samtal')}
               showLiveDot={isSelectedDateToday}
             />
             
@@ -415,7 +427,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               isLoading={!ordrarData.length}
               color="purple"
               chartData={croppedOrdrarData}
-              onClick={() => onStatisticsClick('ordrar')}
+              onClick={() => handleStatisticsClick('ordrar')}
               showLiveDot={isSelectedDateToday}
             />
           </div>
@@ -471,6 +483,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
           </Card>
         </div>
       </div>
+    );
+  }
+
+  if (currentView === 'statistics') {
+    return (
+      <StatisticsView
+        statType={selectedStatType!}
+        selectedDate={selectedDate}
+        onBack={handleBackToWelcome}
+      />
     );
   }
 
