@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -102,34 +103,53 @@ export class AuthUtils {
     try {
       console.log('Attempting login with:', loginData.username);
       
-      const responseData = await this.makeProxyRequest(
-        'https://app.salesys.se/api/users/login-v1',
-        loginData
-      );
+      const response = await supabase.functions.invoke('salesys-proxy', {
+        body: {
+          url: 'https://app.salesys.se/api/users/login-v1',
+          method: 'POST',
+          data: loginData,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      });
       
-      console.log('Login response data:', responseData);
+      console.log('Login response:', response);
+      
+      if (response.error) {
+        console.error('Login error:', response.error);
+        throw new Error(`Login failed: ${response.error.message}`);
+      }
       
       // Check if we got a successful response
-      if (responseData === "OK") {
-        console.log('Login response was OK, waiting for cookies to be set...');
+      if (response.data === "OK") {
+        console.log('Login response was OK, checking for bearer token...');
         
-        // Wait for cookies to be properly set by the proxy
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Try to get bearer token from response headers
+        const bearerToken = response.headers?.['X-Bearer-Token'] || response.headers?.['x-bearer-token'];
         
-        // Check if bearer token was set successfully
-        const token = this.getBearerToken();
-        const authStatus = !!token;
-        console.log('Auth status after login:', authStatus);
-        
-        if (token) {
-          // Store the token for API usage
-          localStorage.setItem('salesys_bearer_token', token);
-          console.log('Bearer token stored for API usage');
+        if (bearerToken) {
+          console.log('Bearer token found in response headers:', bearerToken.substring(0, 20) + '...');
+          localStorage.setItem('salesys_bearer_token', bearerToken);
+          return true;
+        } else {
+          console.log('No bearer token in response headers, waiting for cookies...');
+          
+          // Wait for cookies to be set and try to extract token
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          const token = this.getBearerToken();
+          if (token) {
+            localStorage.setItem('salesys_bearer_token', token);
+            console.log('Bearer token extracted from cookies and stored');
+            return true;
+          } else {
+            console.log('No bearer token found in cookies either');
+            return false;
+          }
         }
-        
-        return authStatus;
       } else {
-        console.log('Login failed - response was not OK:', responseData);
+        console.log('Login failed - response was not OK:', response.data);
         return false;
       }
     } catch (error) {

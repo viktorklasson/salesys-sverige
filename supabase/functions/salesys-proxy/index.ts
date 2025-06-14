@@ -47,7 +47,7 @@ serve(async (req) => {
     console.log('Response status:', response.status)
     console.log('Response data:', responseData)
 
-    // Get cookies from the response - use both methods for compatibility
+    // Get cookies from the response
     let setCookieHeaders: string[] = []
     
     // Try the newer getSetCookie method first
@@ -64,13 +64,31 @@ serve(async (req) => {
     
     console.log('Original Set-Cookie headers:', setCookieHeaders)
     
+    // Extract the bearer token from cookies
+    let bearerToken = null
+    setCookieHeaders.forEach(cookie => {
+      if (cookie.startsWith('s2_utoken=')) {
+        const tokenMatch = cookie.match(/s2_utoken=([^;]+)/)
+        if (tokenMatch) {
+          bearerToken = tokenMatch[1]
+          console.log('Extracted bearer token:', bearerToken.substring(0, 20) + '...')
+        }
+      }
+    })
+
     // Prepare response headers
     const responseHeaders = new Headers({
       ...corsHeaders,
       'Content-Type': response.headers.get('content-type') || 'application/json'
     })
 
-    // Process and forward Set-Cookie headers with proper domain settings
+    // If we have a bearer token, include it in a custom header
+    if (bearerToken) {
+      responseHeaders.set('X-Bearer-Token', bearerToken)
+      console.log('Added bearer token to response header')
+    }
+
+    // Still try to set cookies for compatibility
     setCookieHeaders.forEach(cookie => {
       console.log('Processing cookie:', cookie)
       
