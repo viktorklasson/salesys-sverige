@@ -82,12 +82,6 @@ serve(async (req) => {
       'Content-Type': response.headers.get('content-type') || 'application/json'
     })
 
-    // If we have a bearer token, include it in a custom header
-    if (bearerToken) {
-      responseHeaders.set('X-Bearer-Token', bearerToken)
-      console.log('Added bearer token to response header')
-    }
-
     // Still try to set cookies for compatibility
     setCookieHeaders.forEach(cookie => {
       console.log('Processing cookie:', cookie)
@@ -110,7 +104,17 @@ serve(async (req) => {
       responseHeaders.append('Set-Cookie', modifiedCookie)
     })
 
-    return new Response(responseData, {
+    // Return response with bearer token included in the response body for login requests
+    let finalResponseData = responseData
+    if (bearerToken && url.includes('/login')) {
+      console.log('Including bearer token in response data for login request')
+      finalResponseData = JSON.stringify({
+        status: responseData,
+        bearerToken: bearerToken
+      })
+    }
+
+    return new Response(finalResponseData, {
       status: response.status,
       headers: responseHeaders
     })

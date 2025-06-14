@@ -121,19 +121,31 @@ export class AuthUtils {
         throw new Error(`Login failed: ${response.error.message}`);
       }
       
+      // Try to parse response data as JSON first (for login with bearer token)
+      let responseData = response.data;
+      let bearerToken = null;
+      
+      try {
+        const parsedData = JSON.parse(response.data);
+        if (parsedData.status && parsedData.bearerToken) {
+          responseData = parsedData.status;
+          bearerToken = parsedData.bearerToken;
+          console.log('Bearer token found in response data:', bearerToken.substring(0, 20) + '...');
+        }
+      } catch (e) {
+        // Response is not JSON, use as is
+        console.log('Response is not JSON, using as string');
+      }
+      
       // Check if we got a successful response
-      if (response.data === "OK") {
+      if (responseData === "OK") {
         console.log('Login response was OK, checking for bearer token...');
         
-        // Try to get bearer token from response headers
-        const bearerToken = response.headers?.['X-Bearer-Token'] || response.headers?.['x-bearer-token'];
-        
         if (bearerToken) {
-          console.log('Bearer token found in response headers:', bearerToken.substring(0, 20) + '...');
           localStorage.setItem('salesys_bearer_token', bearerToken);
           return true;
         } else {
-          console.log('No bearer token in response headers, waiting for cookies...');
+          console.log('No bearer token in response data, waiting for cookies...');
           
           // Wait for cookies to be set and try to extract token
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -149,7 +161,7 @@ export class AuthUtils {
           }
         }
       } else {
-        console.log('Login failed - response was not OK:', response.data);
+        console.log('Login failed - response was not OK:', responseData);
         return false;
       }
     } catch (error) {
