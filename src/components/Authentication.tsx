@@ -31,23 +31,30 @@ interface ResetData {
 // ============================================================================
 
 export class AuthUtils {
-  // Check if user is authenticated by checking cookies
-  static checkAuthStatus(): boolean {
+  // Extract bearer token from cookies
+  static getBearerToken(): string | null {
     const cookies = document.cookie.split(';');
     console.log('Raw cookies:', document.cookie);
     
-    const authCookies = cookies.filter(cookie => {
+    for (const cookie of cookies) {
       const trimmed = cookie.trim();
-      const hasToken = trimmed.startsWith('s2_utoken=') && trimmed.length > 's2_utoken='.length;
-      const hasUid = trimmed.startsWith('s2_uid=') && trimmed.length > 's2_uid='.length;
-      return hasToken || hasUid;
-    });
+      if (trimmed.startsWith('s2_utoken=')) {
+        const token = trimmed.substring('s2_utoken='.length);
+        console.log('Found bearer token:', token.substring(0, 20) + '...');
+        return token;
+      }
+    }
     
-    console.log('Found auth cookies:', authCookies);
-    const hasAuthCookie = authCookies.length > 0;
-    console.log('Auth status:', hasAuthCookie);
-    
-    return hasAuthCookie;
+    console.log('No bearer token found in cookies');
+    return null;
+  }
+
+  // Check if user is authenticated by checking for bearer token
+  static checkAuthStatus(): boolean {
+    const token = this.getBearerToken();
+    const hasToken = !!token;
+    console.log('Auth status:', hasToken);
+    return hasToken;
   }
 
   // Clear all authentication cookies
@@ -109,11 +116,18 @@ export class AuthUtils {
         // Wait for cookies to be properly set by the proxy
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check if cookies were set successfully
-        const authStatus = this.checkAuthStatus();
+        // Check if bearer token was set successfully
+        const token = this.getBearerToken();
+        const authStatus = !!token;
         console.log('Auth status after login:', authStatus);
         
-        return authStatus; // Return actual cookie status now
+        if (token) {
+          // Store the token for API usage
+          localStorage.setItem('salesys_bearer_token', token);
+          console.log('Bearer token stored for API usage');
+        }
+        
+        return authStatus;
       } else {
         console.log('Login failed - response was not OK:', responseData);
         return false;
@@ -179,10 +193,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
 
   // Only check auth status on mount - no interval checks
   useEffect(() => {
-    const hasAuthCookie = AuthUtils.checkAuthStatus();
-    console.log('Initial auth check:', hasAuthCookie);
-    setIsLoggedIn(hasAuthCookie);
-    if (hasAuthCookie) {
+    const hasAuthToken = AuthUtils.checkAuthStatus();
+    console.log('Initial auth check:', hasAuthToken);
+    setIsLoggedIn(hasAuthToken);
+    if (hasAuthToken) {
       onAuthenticated();
       navigate('/');
     }
@@ -198,7 +212,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful with cookies detected');
+        console.log('Login successful with bearer token detected');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
@@ -207,8 +221,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
         onAuthenticated();
         navigate('/', { replace: true });
       } else {
-        console.log('Login failed - no cookies detected');
-        setError('Login failed. Cookies could not be set. Please try again.');
+        console.log('Login failed - no bearer token detected');
+        setError('Login failed. Authentication token could not be obtained. Please try again.');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -244,6 +258,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
 
   const handleLogout = () => {
     AuthUtils.clearAuthCookies();
+    localStorage.removeItem('salesys_bearer_token');
     setIsLoggedIn(false);
     setSuccess('Successfully logged out!');
     navigate('/login');
@@ -440,9 +455,9 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Only check once on mount
-    const hasAuthCookie = AuthUtils.checkAuthStatus();
-    console.log('useAuth hook - Initial auth status:', hasAuthCookie);
-    setIsAuthenticated(hasAuthCookie);
+    const hasAuthToken = AuthUtils.checkAuthStatus();
+    console.log('useAuth hook - Initial auth status:', hasAuthToken);
+    setIsAuthenticated(hasAuthToken);
     setIsCheckingAuth(false);
   }, []);
 
