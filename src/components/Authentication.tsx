@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -33,43 +34,72 @@ interface ResetData {
 export class AuthUtils {
   // Extract bearer token from cookies
   static getBearerToken(): string | null {
+    console.log('=== AuthUtils.getBearerToken() START ===');
     const cookies = document.cookie.split(';');
     console.log('Raw cookies:', document.cookie);
+    console.log('Parsed cookies array:', cookies);
     
     for (const cookie of cookies) {
       const trimmed = cookie.trim();
+      console.log('Checking cookie:', trimmed);
       if (trimmed.startsWith('s2_utoken=')) {
         const token = trimmed.substring('s2_utoken='.length);
-        console.log('Found bearer token:', token.substring(0, 20) + '...');
+        console.log('Found bearer token in cookies:', token.substring(0, 20) + '...');
+        console.log('Token length:', token.length);
+        console.log('=== AuthUtils.getBearerToken() END - FOUND ===');
         return token;
       }
     }
     
-    console.log('No bearer token found in cookies');
+    // Also check localStorage as fallback
+    const localToken = localStorage.getItem('salesys_bearer_token');
+    if (localToken) {
+      console.log('Found bearer token in localStorage:', localToken.substring(0, 20) + '...');
+      console.log('Token length:', localToken.length);
+      console.log('=== AuthUtils.getBearerToken() END - FOUND IN LOCALSTORAGE ===');
+      return localToken;
+    }
+    
+    console.log('No bearer token found in cookies or localStorage');
+    console.log('=== AuthUtils.getBearerToken() END - NOT FOUND ===');
     return null;
   }
 
   // Check if user is authenticated by checking for bearer token
   static checkAuthStatus(): boolean {
+    console.log('=== AuthUtils.checkAuthStatus() START ===');
     const token = this.getBearerToken();
     const hasToken = !!token;
-    console.log('Auth status:', hasToken);
+    console.log('Auth status result:', hasToken);
+    console.log('=== AuthUtils.checkAuthStatus() END ===');
     return hasToken;
   }
 
   // Clear all authentication cookies
   static clearAuthCookies(): void {
+    console.log('=== AuthUtils.clearAuthCookies() START ===');
     const cookies = ['s2_utoken', 's2_uid', 's2_uname'];
     cookies.forEach(cookieName => {
+      console.log('Clearing cookie:', cookieName);
       document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
       document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
     });
+    
+    // Also clear localStorage
+    localStorage.removeItem('salesys_bearer_token');
+    console.log('Cleared localStorage token');
+    console.log('=== AuthUtils.clearAuthCookies() END ===');
   }
 
   // Use Supabase Edge Function for proxy requests
   static async makeProxyRequest(endpoint: string, data?: any, method = 'POST'): Promise<any> {
+    console.log('=== AuthUtils.makeProxyRequest() START ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Method:', method);
+    console.log('Data:', data);
+    
     try {
-      console.log('Making proxy request to:', endpoint, 'with data:', data);
+      console.log('Making Supabase edge function request...');
       
       const response = await supabase.functions.invoke('salesys-proxy', {
         body: {
@@ -82,25 +112,32 @@ export class AuthUtils {
         }
       });
       
-      console.log('Edge function response:', response);
+      console.log('Edge function response received:', response);
+      console.log('Response data:', response.data);
+      console.log('Response error:', response.error);
       
       if (response.error) {
         console.error('Edge function error:', response.error);
         throw new Error(`Proxy request failed: ${response.error.message}`);
       }
       
+      console.log('=== AuthUtils.makeProxyRequest() END - SUCCESS ===');
       return response.data;
       
     } catch (error) {
       console.error('Proxy request failed:', error);
+      console.log('=== AuthUtils.makeProxyRequest() END - ERROR ===');
       throw error;
     }
   }
 
   // Login function
   static async login(loginData: LoginData): Promise<boolean> {
+    console.log('=== AuthUtils.login() START ===');
+    console.log('Login data:', { username: loginData.username, password: '[HIDDEN]' });
+    
     try {
-      console.log('Attempting login with:', loginData.username);
+      console.log('Attempting login via edge function...');
       
       const response = await supabase.functions.invoke('salesys-proxy', {
         body: {
@@ -113,73 +150,118 @@ export class AuthUtils {
         }
       });
       
-      console.log('Login response:', response);
+      console.log('Login response received:', response);
+      console.log('Response data type:', typeof response.data);
+      console.log('Response data:', response.data);
       
       if (response.error) {
-        console.error('Login error:', response.error);
+        console.error('Login error from edge function:', response.error);
         throw new Error(`Login failed: ${response.error.message}`);
       }
       
-      // Try to parse response data as JSON first (for login with bearer token)
-      let responseData = response.data;
+      // Check if response contains bearer token directly
       let bearerToken = null;
+      let statusResponse = null;
       
-      try {
-        const parsedData = JSON.parse(response.data);
-        if (parsedData.status && parsedData.bearerToken) {
-          responseData = parsedData.status;
-          bearerToken = parsedData.bearerToken;
-          console.log('Bearer token found in response data:', bearerToken.substring(0, 20) + '...');
+      if (typeof response.data === 'string') {
+        console.log('Response is string:', response.data);
+        
+        // Try to parse as JSON in case it's a stringified object
+        try {
+          const parsed = JSON.parse(response.data);
+          console.log('Parsed response:', parsed);
+          
+          if (parsed.status && parsed.bearerToken) {
+            statusResponse = parsed.status;
+            bearerToken = parsed.bearerToken;
+            console.log('Found structured response with bearer token');
+          } else {
+            statusResponse = response.data;
+          }
+        } catch (e) {
+          console.log('Response is not JSON, treating as plain string');
+          statusResponse = response.data;
         }
-      } catch (e) {
-        // Response is not JSON, use as is
-        console.log('Response is not JSON, using as string');
+      } else if (typeof response.data === 'object' && response.data !== null) {
+        console.log('Response is object');
+        
+        if (response.data.status && response.data.bearerToken) {
+          statusResponse = response.data.status;
+          bearerToken = response.data.bearerToken;
+          console.log('Found bearer token in object response');
+        } else {
+          statusResponse = response.data;
+        }
+      } else {
+        console.log('Unexpected response format');
+        statusResponse = response.data;
+      }
+      
+      console.log('Status response:', statusResponse);
+      console.log('Bearer token found:', !!bearerToken);
+      
+      if (bearerToken) {
+        console.log('Bearer token length:', bearerToken.length);
+        console.log('Bearer token preview:', bearerToken.substring(0, 50) + '...');
       }
       
       // Check if we got a successful response
-      if (responseData === "OK") {
-        console.log('Login response was OK, checking for bearer token...');
+      if (statusResponse === "OK") {
+        console.log('Login response was OK');
         
         if (bearerToken) {
+          console.log('Storing bearer token from response...');
           localStorage.setItem('salesys_bearer_token', bearerToken);
+          console.log('Bearer token stored in localStorage');
+          console.log('=== AuthUtils.login() END - SUCCESS WITH TOKEN ===');
           return true;
         } else {
-          console.log('No bearer token in response data, waiting for cookies...');
+          console.log('No bearer token in response, waiting for cookies...');
           
           // Wait for cookies to be set and try to extract token
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           const token = this.getBearerToken();
           if (token) {
-            localStorage.setItem('salesys_bearer_token', token);
-            console.log('Bearer token extracted from cookies and stored');
+            console.log('Bearer token extracted from cookies after delay');
+            console.log('=== AuthUtils.login() END - SUCCESS WITH DELAYED TOKEN ===');
             return true;
           } else {
-            console.log('No bearer token found in cookies either');
+            console.log('No bearer token found in cookies after delay');
+            console.log('=== AuthUtils.login() END - FAILED NO TOKEN ===');
             return false;
           }
         }
       } else {
-        console.log('Login failed - response was not OK:', responseData);
+        console.log('Login failed - response was not OK:', statusResponse);
+        console.log('=== AuthUtils.login() END - FAILED BAD RESPONSE ===');
         return false;
       }
     } catch (error) {
       console.error('Login error:', error);
+      console.log('=== AuthUtils.login() END - ERROR ===');
       throw error;
     }
   }
 
   // Password reset function
   static async resetPassword(resetData: ResetData): Promise<boolean> {
+    console.log('=== AuthUtils.resetPassword() START ===');
+    console.log('Reset data:', resetData);
+    
     try {
       const responseData = await this.makeProxyRequest(
         'https://app.salesys.se/api/users/password-reset-v1/request',
         resetData
       );
       
-      return !!responseData; // Convert to boolean
+      const success = !!responseData;
+      console.log('Password reset result:', success);
+      console.log('=== AuthUtils.resetPassword() END ===');
+      return success;
     } catch (error) {
       console.error('Password reset error:', error);
+      console.log('=== AuthUtils.resetPassword() END - ERROR ===');
       throw error;
     }
   }
@@ -190,10 +272,14 @@ export class AuthUtils {
 // ============================================================================
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, isAuthenticated }) => {
+  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated);
+  
   if (!isAuthenticated) {
+    console.log('ProtectedRoute - redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
+  console.log('ProtectedRoute - rendering children');
   return <>{children}</>;
 };
 
@@ -224,50 +310,63 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
 
   // Only check auth status on mount - no interval checks
   useEffect(() => {
+    console.log('=== AuthForm useEffect() START ===');
     const hasAuthToken = AuthUtils.checkAuthStatus();
-    console.log('Initial auth check:', hasAuthToken);
+    console.log('Initial auth check result:', hasAuthToken);
     setIsLoggedIn(hasAuthToken);
     if (hasAuthToken) {
+      console.log('Already authenticated, calling onAuthenticated and navigating');
       onAuthenticated();
       navigate('/');
     }
+    console.log('=== AuthForm useEffect() END ===');
   }, [onAuthenticated, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
+    console.log('=== handleLogin() START ===');
     e.preventDefault();
     e.stopPropagation();
     
-    if (loading) return; // Prevent double submissions
+    if (loading) {
+      console.log('Already loading, ignoring request');
+      return;
+    }
     
     setLoading(true);
     setError('');
+    console.log('Starting login process...');
     
     try {
-      console.log('Attempting login...');
+      console.log('Calling AuthUtils.login()...');
       const success = await AuthUtils.login(loginData);
+      console.log('AuthUtils.login() returned:', success);
       
       if (success) {
-        console.log('Login successful with bearer token detected');
+        console.log('Login successful, updating UI state');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
         
         // Call onAuthenticated and navigate immediately
+        console.log('Calling onAuthenticated callback');
         onAuthenticated();
+        console.log('Navigating to home page');
         navigate('/', { replace: true });
       } else {
         console.log('Login failed - no bearer token detected');
         setError('Login failed. Authentication token could not be obtained. Please try again.');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error caught:', error);
       setError('Login failed. Please check your connection and try again.');
     } finally {
       setLoading(false);
+      console.log('=== handleLogin() END ===');
     }
   };
 
   const handlePasswordReset = async (e: React.FormEvent) => {
+    console.log('=== handlePasswordReset() START ===');
     e.preventDefault();
     e.stopPropagation();
     
@@ -292,19 +391,22 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       console.error('Password reset error:', error);
     } finally {
       setLoading(false);
+      console.log('=== handlePasswordReset() END ===');
     }
   };
 
   const handleLogout = () => {
+    console.log('=== handleLogout() START ===');
     AuthUtils.clearAuthCookies();
-    localStorage.removeItem('salesys_bearer_token');
     setIsLoggedIn(false);
     setSuccess('Successfully logged out!');
     navigate('/login');
+    console.log('=== handleLogout() END ===');
   };
 
   // If user is logged in, show logged in state
   if (isLoggedIn) {
+    console.log('Rendering logged in state');
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-md min-w-80 mx-auto bg-white rounded-xl shadow-md border" style={{fontFamily: 'Nunito, sans-serif', padding: '2rem 3rem'}}>
@@ -334,6 +436,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
     );
   }
 
+  console.log('Rendering login form');
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md min-w-80 mx-auto bg-white rounded-xl shadow-md border" style={{fontFamily: 'Nunito, sans-serif', padding: '2rem 3rem'}}>
@@ -496,20 +599,25 @@ export const useAuth = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
+    console.log('=== useAuth hook useEffect() START ===');
     // Only check once on mount
     const hasAuthToken = AuthUtils.checkAuthStatus();
     console.log('useAuth hook - Initial auth status:', hasAuthToken);
     setIsAuthenticated(hasAuthToken);
     setIsCheckingAuth(false);
+    console.log('=== useAuth hook useEffect() END ===');
   }, []);
 
   const handleAuthenticated = () => {
-    console.log('handleAuthenticated called');
+    console.log('=== useAuth.handleAuthenticated() START ===');
     setIsAuthenticated(true);
+    console.log('=== useAuth.handleAuthenticated() END ===');
   };
 
   const handleLogout = () => {
+    console.log('=== useAuth.handleLogout() START ===');
     setIsAuthenticated(false);
+    console.log('=== useAuth.handleLogout() END ===');
   };
 
   return {

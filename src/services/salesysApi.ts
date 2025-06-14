@@ -241,35 +241,57 @@ class SalesysApi {
 
   // Extract bearer token from cookies
   private extractBearerTokenFromCookies(): string | null {
+    console.log('=== SalesysApi.extractBearerTokenFromCookies() START ===');
     const cookies = document.cookie.split(';');
+    console.log('Checking cookies for s2_utoken:', cookies);
     
     for (const cookie of cookies) {
       const trimmedCookie = cookie.trim();
       if (trimmedCookie.startsWith('s2_utoken=')) {
-        return trimmedCookie.substring('s2_utoken='.length);
+        const token = trimmedCookie.substring('s2_utoken='.length);
+        console.log('Found s2_utoken cookie, length:', token.length);
+        console.log('=== SalesysApi.extractBearerTokenFromCookies() END - FOUND ===');
+        return token;
       }
     }
     
+    console.log('No s2_utoken cookie found');
+    console.log('=== SalesysApi.extractBearerTokenFromCookies() END - NOT FOUND ===');
     return null;
   }
 
   setBearerToken(token: string) {
+    console.log('=== SalesysApi.setBearerToken() START ===');
+    console.log('Setting bearer token, length:', token.length);
     this.bearerToken = token;
     localStorage.setItem('salesys_bearer_token', token);
+    console.log('Token stored in localStorage');
+    console.log('=== SalesysApi.setBearerToken() END ===');
   }
 
   getBearerToken(): string | null {
+    console.log('=== SalesysApi.getBearerToken() START ===');
+    
     // First try to get from cookies
     const cookieToken = this.extractBearerTokenFromCookies();
     if (cookieToken) {
+      console.log('Using token from cookies');
       this.bearerToken = cookieToken;
+      console.log('=== SalesysApi.getBearerToken() END - FROM COOKIES ===');
       return cookieToken;
     }
 
     // Fall back to stored token
     if (!this.bearerToken) {
       this.bearerToken = localStorage.getItem('salesys_bearer_token');
+      console.log('Retrieved token from localStorage:', !!this.bearerToken);
+      if (this.bearerToken) {
+        console.log('Token length:', this.bearerToken.length);
+      }
     }
+    
+    console.log('Final token available:', !!this.bearerToken);
+    console.log('=== SalesysApi.getBearerToken() END ===');
     return this.bearerToken;
   }
 
@@ -277,7 +299,9 @@ class SalesysApi {
   private addCacheBusting(url: string): string {
     const separator = url.includes('?') ? '&' : '?';
     const timestamp = Date.now();
-    return `${url}${separator}_cb=${timestamp}`;
+    const finalUrl = `${url}${separator}_cb=${timestamp}`;
+    console.log('Added cache busting to URL:', finalUrl);
+    return finalUrl;
   }
 
   private async apiCall(
@@ -285,8 +309,15 @@ class SalesysApi {
     method: 'GET' | 'POST' | 'PUT' = 'GET',
     data?: any
   ): Promise<any> {
+    console.log('=== SalesysApi.apiCall() START ===');
+    console.log('Endpoint:', endpoint);
+    console.log('Method:', method);
+    console.log('Data:', data);
+    
     const token = this.getBearerToken();
     if (!token) {
+      console.error('No bearer token available for API call');
+      console.log('=== SalesysApi.apiCall() END - NO TOKEN ===');
       throw new Error('Ingen bearer token tillgänglig. Vänligen logga in.');
     }
 
@@ -294,6 +325,9 @@ class SalesysApi {
     const urlWithCacheBusting = this.addCacheBusting(endpoint);
     
     try {
+      console.log('Making Supabase edge function request...');
+      console.log('Using bearer token (preview):', token.substring(0, 20) + '...');
+      
       const response = await supabase.functions.invoke('salesys-proxy', {
         body: {
           url: urlWithCacheBusting,
@@ -309,13 +343,21 @@ class SalesysApi {
         }
       });
 
+      console.log('Edge function response received:', response);
+      console.log('Response data:', response.data);
+      console.log('Response error:', response.error);
+
       if (response.error) {
+        console.error('Edge function error:', response.error);
+        console.log('=== SalesysApi.apiCall() END - ERROR ===');
         throw new Error(`API fel: ${response.error.message}`);
       }
 
+      console.log('=== SalesysApi.apiCall() END - SUCCESS ===');
       return response.data;
     } catch (error) {
       console.error('API call failed:', error);
+      console.log('=== SalesysApi.apiCall() END - EXCEPTION ===');
       throw error;
     }
   }
