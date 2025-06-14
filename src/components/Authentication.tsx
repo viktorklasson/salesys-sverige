@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -236,6 +235,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    if (loading) return; // Prevent double submissions
+    
     setLoading(true);
     setError('');
     
@@ -266,6 +269,10 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    if (loading) return;
+    
     setLoading(true);
     setError('');
     
@@ -315,6 +322,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
             )}
             
             <button
+              type="button"
               onClick={handleLogout}
               className="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-200"
             >
@@ -450,6 +458,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
         <div className="mt-6 text-center">
           {!showResetPassword ? (
             <button
+              type="button"
               onClick={() => {
                 setShowResetPassword(true);
                 setError('');
@@ -461,6 +470,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => {
                 setShowResetPassword(false);
                 setError('');
