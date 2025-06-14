@@ -25,6 +25,8 @@ serve(async (req) => {
       )
     }
 
+    console.log('Proxying request to:', url, 'with method:', method)
+
     // Forward the request to the target URL
     const requestOptions: RequestInit = {
       method,
@@ -42,8 +44,25 @@ serve(async (req) => {
     const response = await fetch(url, requestOptions)
     const responseData = await response.text()
 
-    // Get cookies from the response
-    const setCookieHeaders = response.headers.getSetCookie?.() || []
+    console.log('Response status:', response.status)
+    console.log('Response data:', responseData)
+
+    // Get cookies from the response - use both methods for compatibility
+    let setCookieHeaders: string[] = []
+    
+    // Try the newer getSetCookie method first
+    if (response.headers.getSetCookie) {
+      setCookieHeaders = response.headers.getSetCookie()
+    } else {
+      // Fallback to manual extraction
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') {
+          setCookieHeaders.push(value)
+        }
+      })
+    }
+    
+    console.log('Original Set-Cookie headers:', setCookieHeaders)
     
     // Prepare response headers
     const responseHeaders = new Headers({
@@ -51,9 +70,26 @@ serve(async (req) => {
       'Content-Type': response.headers.get('content-type') || 'application/json'
     })
 
-    // Forward Set-Cookie headers properly
+    // Process and forward Set-Cookie headers with proper domain settings
     setCookieHeaders.forEach(cookie => {
-      responseHeaders.append('Set-Cookie', cookie)
+      console.log('Processing cookie:', cookie)
+      
+      // Modify cookie to work with our domain
+      let modifiedCookie = cookie
+      
+      // Remove domain restrictions that might prevent cookie setting
+      modifiedCookie = modifiedCookie.replace(/;\s*Domain=[^;]+/gi, '')
+      
+      // Remove Secure flag if present (since we might be on http in development)
+      modifiedCookie = modifiedCookie.replace(/;\s*Secure/gi, '')
+      
+      // Add SameSite=None for cross-origin requests
+      if (!modifiedCookie.includes('SameSite')) {
+        modifiedCookie += '; SameSite=None'
+      }
+      
+      console.log('Modified cookie:', modifiedCookie)
+      responseHeaders.append('Set-Cookie', modifiedCookie)
     })
 
     return new Response(responseData, {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { useNavigate, Navigate } from 'react-router-dom';
@@ -107,22 +106,14 @@ export class AuthUtils {
       if (responseData === "OK") {
         console.log('Login response was OK, waiting for cookies to be set...');
         
-        // Wait for cookies to be properly set
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Wait for cookies to be properly set by the proxy
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Check cookies multiple times to ensure they're detected
-        let authStatus = false;
-        let attempts = 0;
-        const maxAttempts = 3;
+        // Check if cookies were set successfully
+        const authStatus = this.checkAuthStatus();
+        console.log('Auth status after login:', authStatus);
         
-        while (!authStatus && attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          authStatus = this.checkAuthStatus();
-          attempts++;
-          console.log(`Auth check attempt ${attempts}:`, authStatus);
-        }
-        
-        return true; // Always return true if server response was OK
+        return authStatus; // Return actual cookie status now
       } else {
         console.log('Login failed - response was not OK:', responseData);
         return false;
@@ -207,7 +198,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
       const success = await AuthUtils.login(loginData);
       
       if (success) {
-        console.log('Login successful, setting states');
+        console.log('Login successful with cookies detected');
         setIsLoggedIn(true);
         setSuccess('Successfully logged in!');
         setLoginData({ username: '', password: '' });
@@ -216,8 +207,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onAuthenticated }) => {
         onAuthenticated();
         navigate('/', { replace: true });
       } else {
-        console.log('Login failed');
-        setError('Invalid credentials. Please check your username and password.');
+        console.log('Login failed - no cookies detected');
+        setError('Login failed. Cookies could not be set. Please try again.');
       }
     } catch (error) {
       console.error('Login error:', error);
