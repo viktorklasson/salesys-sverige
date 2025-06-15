@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings, LogOut } from 'lucide-react';
 import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { supabase } from '@/integrations/supabase/client';
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -403,6 +404,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     setDashboardResults(null);
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // The auth state change will be handled by the useAuth hook
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast({
+        title: "Något gick fel.",
+        description: "Kunde inte logga ut.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (currentView === 'welcome') {
     const isSelectedDateToday = isToday(selectedDate);
     const croppedAvtalsData = cropChartData(avtalsData);
@@ -410,8 +425,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     const croppedOrdrarData = cropChartData(ordrarData);
 
     return (
-      <div className="min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-12">
+      <div className="min-h-screen bg-white flex flex-col">
+        <div className="container mx-auto px-4 py-12 flex-1">
           <div className="flex justify-between items-start mb-6 mt-12">
             <div className="flex items-baseline gap-3">
               <h1 className="text-4xl font-light text-gray-800">Hej Viktor</h1>
@@ -519,6 +534,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Footer */}
+        <div className="py-6 px-4">
+          <div className="container mx-auto">
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-sm text-gray-500">Skapad av SaleSys</p>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
