@@ -62,6 +62,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const [avtalsData, setAvtalsData] = useState<Array<{ date: string; value: number }>>([]);
   const [samtalData, setSamtalData] = useState<Array<{ date: string; value: number }>>([]);
   const [ordrarData, setOrdrarData] = useState<Array<{ date: string; value: number }>>([]);
+  const [loadingStatistics, setLoadingStatistics] = useState(false);
   const [dialGroups, setDialGroups] = useState<any[]>([]);
   const [loadingDialGroups, setLoadingDialGroups] = useState(true);
   const [dialGroupsError, setDialGroupsError] = useState<string | null>(null);
@@ -222,6 +223,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       if (!salesysApi.getBearerToken()) return;
 
       console.log('Loading welcome card statistics data for date:', selectedDate);
+      setLoadingStatistics(true);
       const { from, to } = getDateRange(selectedDate);
 
       try {
@@ -231,22 +233,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
           salesysApi.getOrderStatisticsHourly({ from, to, fixedIntervalType: 'hour' })
         ]);
 
-        const avtalsData = aggregateHourlyData(offerStats);
-        const samtalData = aggregateHourlyData(callStats);
-        const ordrarData = aggregateHourlyData(orderStats);
+        const newAvtalsData = aggregateHourlyData(offerStats);
+        const newSamtalData = aggregateHourlyData(callStats);
+        const newOrdrarData = aggregateHourlyData(orderStats);
 
-        setAvtalsData(avtalsData);
-        setSamtalData(samtalData);
-        setOrdrarData(ordrarData);
+        setAvtalsData(newAvtalsData);
+        setSamtalData(newSamtalData);
+        setOrdrarData(newOrdrarData);
 
         console.log('Loaded welcome card hourly statistics:', { 
-          avtal: avtalsData, 
-          samtal: samtalData, 
-          ordrar: ordrarData 
+          avtal: newAvtalsData, 
+          samtal: newSamtalData, 
+          ordrar: newOrdrarData 
         });
 
       } catch (error) {
         console.error('Error loading welcome card statistics:', error);
+      } finally {
+        setLoadingStatistics(false);
       }
     };
 
@@ -438,7 +442,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Avtal signerade"
               count={getTotalFromHourlyData(avtalsData)}
-              isLoading={avtalsData.length === 0}
+              isLoading={false}
               color="green"
               chartData={croppedAvtalsData.length > 0 ? croppedAvtalsData : (avtalsData.length > 0 ? avtalsData : [])}
               onClick={() => handleStatisticsClick('avtal')}
@@ -448,7 +452,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Samtal genomförda"
               count={getTotalFromHourlyData(samtalData)}
-              isLoading={samtalData.length === 0}
+              isLoading={false}
               color="blue"
               chartData={croppedSamtalData.length > 0 ? croppedSamtalData : (samtalData.length > 0 ? samtalData : [])}
               onClick={() => handleStatisticsClick('samtal')}
@@ -458,7 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Ordrar skapade"
               count={getTotalFromHourlyData(ordrarData)}
-              isLoading={ordrarData.length === 0}
+              isLoading={false}
               color="purple"
               chartData={croppedOrdrarData.length > 0 ? croppedOrdrarData : (ordrarData.length > 0 ? ordrarData : [])}
               onClick={() => handleStatisticsClick('ordrar')}
