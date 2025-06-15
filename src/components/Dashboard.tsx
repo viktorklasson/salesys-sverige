@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/table"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { supabase } from '@/integrations/supabase/client';
+import { AuthUtils } from './Authentication';
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -406,7 +407,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
   const handleLogout = async () => {
     try {
+      console.log('Logging out - clearing auth cookies and Supabase session');
+      
+      // Clear all SaleSys authentication cookies
+      AuthUtils.clearAuthCookies();
+      
+      // Sign out from Supabase
       await supabase.auth.signOut();
+      
       // Force reload to reset all state and redirect to login
       window.location.href = '/';
     } catch (error) {
