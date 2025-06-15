@@ -36,6 +36,9 @@
  * USERS & TEAMS:
  * - GET https://app.salesys.se/api/users/users-v1
  * - GET https://app.salesys.se/api/users/teams-v1
+ * 
+ * PROJECTS:
+ * - GET https://app.salesys.se/api/users/projects-v1
  */
 
 import { supabase } from '@/integrations/supabase/client';
@@ -234,6 +237,16 @@ export interface DashboardResult {
     intervalStart: string;
   }>;
   groupedId: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  iconName: string;
+  teamIds: string[];
+  organizationId: string;
+  defaultOrderProductIds: string[];
+  leadListVoicemailHangUpThresholdId: number;
 }
 
 class SalesysApi {
@@ -648,6 +661,12 @@ class SalesysApi {
 
     const url = `https://app.salesys.se/api/orders/statistics-v1/own/issue_1238_2?${queryParams}`;
     console.log('Making order statistics API call:', url);
+    return this.apiCall(url);
+  }
+
+  // Projects API
+  async getProjects(): Promise<Project[]> {
+    const url = 'https://app.salesys.se/api/users/projects-v1';
     return this.apiCall(url);
   }
 

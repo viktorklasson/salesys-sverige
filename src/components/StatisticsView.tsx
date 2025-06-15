@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,13 +101,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        // For now, we'll use a mock project since we don't have a projects API
-        // In a real implementation, you'd call: const projects = await salesysApi.getProjects();
-        setProjects([
-          { id: '683eb0ad0c2e3b3a39b7f688', name: 'Default Project' },
-          { id: 'all', name: 'Alla projekt' }
-        ]);
-        setSelectedProjectId('683eb0ad0c2e3b3a39b7f688'); // Default to first project
+        const projectsData = await salesysApi.getProjects();
+        const formattedProjects = [
+          { id: 'all', name: 'Alla projekt' },
+          ...projectsData.map(project => ({ id: project.id, name: project.name }))
+        ];
+        setProjects(formattedProjects);
+        setSelectedProjectId('all'); // Default to all projects
       } catch (error) {
         console.error('Error loading projects:', error);
         // Set default project even if API fails
@@ -137,12 +136,16 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
 
       console.log(`Loading ${statType} statistics from ${from} to ${to}, project: ${selectedProjectId}`);
 
+      // Prepare project IDs for API call
+      const projectIds = selectedProjectId === 'all' ? undefined : [selectedProjectId];
+
       if (statType === 'avtal') {
         // Use the new statistics API for offers
         const statsData = await salesysApi.getOfferStatistics({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          projectIds
         });
 
         // Convert statistics data to chart format
@@ -166,7 +169,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         const statsData = await salesysApi.getCallStatisticsHourly({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          projectIds
         });
 
         chartData = statsData.map(item => {
@@ -189,7 +193,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         const statsData = await salesysApi.getOrderStatisticsHourly({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          projectIds
         });
 
         chartData = statsData.map(item => {

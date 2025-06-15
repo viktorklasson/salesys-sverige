@@ -192,9 +192,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
       try {
         const [offerStats, callStats, orderStats] = await Promise.all([
-          salesysApi.getOfferStatisticsDetailed({ from, to, fixedIntervalType: 'hour' }),
-          salesysApi.getCallStatisticsDetailed({ from, to, fixedIntervalType: 'hour' }),
-          salesysApi.getOrderStatisticsDetailed({ from, to, fixedIntervalType: 'hour' })
+          salesysApi.getOfferStatistics({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getCallStatisticsHourly({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getOrderStatisticsHourly({ from, to, fixedIntervalType: 'hour' })
         ]);
 
         const avtalsData = aggregateHourlyData(offerStats);
