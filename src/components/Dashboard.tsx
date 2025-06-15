@@ -187,14 +187,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     const loadStatistics = async () => {
       if (!salesysApi.getBearerToken()) return;
 
-      console.log('Loading statistics data for date:', selectedDate);
+      console.log('Loading welcome card statistics data for date:', selectedDate);
       const { from, to } = getDateRange(selectedDate);
 
       try {
         const [offerStats, callStats, orderStats] = await Promise.all([
-          salesysApi.getOfferStatistics({ from, to, fixedIntervalType: 'hour' }),
-          salesysApi.getCallStatisticsHourly({ from, to, fixedIntervalType: 'hour' }),
-          salesysApi.getOrderStatisticsHourly({ from, to, fixedIntervalType: 'hour' })
+          salesysApi.getOfferStatisticsDetailed({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getCallStatisticsDetailed({ from, to, fixedIntervalType: 'hour' }),
+          salesysApi.getOrderStatisticsDetailed({ from, to, fixedIntervalType: 'hour' })
         ]);
 
         const avtalsData = aggregateHourlyData(offerStats);
@@ -205,14 +205,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
         setSamtalData(samtalData);
         setOrdrarData(ordrarData);
 
-        console.log('Loaded hourly statistics:', { 
+        console.log('Loaded welcome card hourly statistics:', { 
           avtal: avtalsData, 
           samtal: samtalData, 
           ordrar: ordrarData 
         });
 
       } catch (error) {
-        console.error('Error loading statistics:', error);
+        console.error('Error loading welcome card statistics:', error);
       }
     };
 
