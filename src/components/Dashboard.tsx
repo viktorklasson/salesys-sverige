@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/table"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -55,6 +56,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<'welcome' | 'section' | 'dashboard' | 'statistics'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
   const [selectedDashboard, setSelectedDashboard] = useState<any>(null);
@@ -407,7 +409,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      // The auth state change will be handled by the useAuth hook
+      // Redirect to login page
+      navigate('/login');
     } catch (error) {
       console.error('Error logging out:', error);
       toast({
