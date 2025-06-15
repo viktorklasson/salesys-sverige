@@ -75,6 +75,68 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const [loadingDashboards, setLoadingDashboards] = useState(false);
   const [dashboardResults, setDashboardResults] = useState<any>(null);
   const [loadingDashboardResults, setLoadingDashboardResults] = useState(false);
+  const [userFirstName, setUserFirstName] = useState<string>('');
+  const [loadingUserName, setLoadingUserName] = useState(true);
+
+  // Helper function to extract username from s2_uname cookie
+  const getUsernameFromCookie = (): string | null => {
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const trimmed = cookie.trim();
+      if (trimmed.startsWith('s2_uname=')) {
+        const username = trimmed.substring('s2_uname='.length);
+        console.log('Found username in cookie:', username);
+        return username;
+      }
+    }
+    console.log('No s2_uname cookie found');
+    return null;
+  };
+
+  // Helper function to get first name from full name
+  const getFirstName = (fullName: string): string => {
+    return fullName.split(' ')[0];
+  };
+
+  // Load user name from API
+  useEffect(() => {
+    const loadUserName = async () => {
+      if (!salesysApi.getBearerToken()) {
+        setLoadingUserName(false);
+        return;
+      }
+
+      const username = getUsernameFromCookie();
+      if (!username) {
+        setUserFirstName('Användare');
+        setLoadingUserName(false);
+        return;
+      }
+
+      try {
+        console.log('Loading users to find first name for username:', username);
+        const users = await salesysApi.getUsers();
+        console.log('Loaded users:', users);
+        
+        const currentUser = users.find(user => user.username === username);
+        if (currentUser) {
+          const firstName = getFirstName(currentUser.fullName);
+          console.log('Found user with fullName:', currentUser.fullName, 'firstName:', firstName);
+          setUserFirstName(firstName);
+        } else {
+          console.log('User not found with username:', username);
+          setUserFirstName('Användare');
+        }
+      } catch (error) {
+        console.error('Error loading user name:', error);
+        setUserFirstName('Användare');
+      } finally {
+        setLoadingUserName(false);
+      }
+    };
+
+    loadUserName();
+  }, []);
 
   // Helper function to get date range for a specific date
   const getDateRange = (date: Date): { from: string; to: string } => {
@@ -438,7 +500,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
         <div className="container mx-auto px-4 py-12 flex-1">
           <div className="flex justify-between items-start mb-6 mt-12">
             <div className="flex items-baseline gap-3">
-              <h1 className="text-4xl font-light text-gray-800">Hej Viktor</h1>
+              <h1 className="text-4xl font-light text-gray-800">
+                Hej {loadingUserName ? '...' : userFirstName}
+              </h1>
               <p className="text-lg text-gray-600">
                 {getRelativeDateText(selectedDate)}
               </p>
