@@ -588,61 +588,11 @@ class SalesysApi {
     return this.apiCall(url);
   }
 
-  // Statistics API
-  async getStatistics(params: {
-    endpoint: string;
-    from: string;
-    to: string;
-    fixedIntervalType?: 'day' | 'week' | 'month';
-  }): Promise<StatisticsData[]> {
-    const queryParams = new URLSearchParams({
-      from: params.from,
-      to: params.to,
-      fixedIntervalType: params.fixedIntervalType || 'day'
-    });
-
-    const url = `https://app.salesys.se/api/offers/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall(url);
-  }
-
-  // Call Statistics API
-  async getCallStatistics(params: {
-    endpoint: string;
-    from: string;
-    to: string;
-    fixedIntervalType?: 'day' | 'week' | 'month';
-  }): Promise<StatisticsData[]> {
-    const queryParams = new URLSearchParams({
-      from: params.from,
-      to: params.to,
-      fixedIntervalType: params.fixedIntervalType || 'day'
-    });
-
-    const url = `https://app.salesys.se/api/dial/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall(url);
-  }
-
-  // Order Statistics API
-  async getOrderStatistics(params: {
-    endpoint: string;
-    from: string;
-    to: string;
-    fixedIntervalType?: 'day' | 'week' | 'month';
-  }): Promise<StatisticsData[]> {
-    const queryParams = new URLSearchParams({
-      from: params.from,
-      to: params.to,
-      fixedIntervalType: params.fixedIntervalType || 'day'
-    });
-
-    const url = `https://app.salesys.se/api/orders/statistics-v1/own/${params.endpoint}?${queryParams}`;
-    return this.apiCall(url);
-  }
-
   async getOfferStatistics(params: {
     from: string;
     to: string;
     fixedIntervalType?: 'hour' | 'day' | 'week' | 'month';
+    projectIds?: string[];
   }): Promise<StatisticsData[]> {
     const queryParams = new URLSearchParams({
       from: params.from,
@@ -650,7 +600,12 @@ class SalesysApi {
       fixedIntervalType: params.fixedIntervalType || 'day'
     });
 
+    if (params.projectIds?.length) {
+      queryParams.set('projectIds', params.projectIds.join(','));
+    }
+
     const url = `https://app.salesys.se/api/offers/statistics-v1/own/issue_1238_2?${queryParams}`;
+    console.log('Making offer statistics API call:', url);
     return this.apiCall(url);
   }
 
@@ -658,6 +613,7 @@ class SalesysApi {
     from: string;
     to: string;
     fixedIntervalType?: 'hour' | 'day' | 'week' | 'month';
+    projectIds?: string[];
   }): Promise<StatisticsData[]> {
     const queryParams = new URLSearchParams({
       from: params.from,
@@ -665,7 +621,12 @@ class SalesysApi {
       fixedIntervalType: params.fixedIntervalType || 'hour'
     });
 
+    if (params.projectIds?.length) {
+      queryParams.set('projectIds', params.projectIds.join(','));
+    }
+
     const url = `https://app.salesys.se/api/dial/statistics-v1/own/issue_1238_2?${queryParams}`;
+    console.log('Making call statistics API call:', url);
     return this.apiCall(url);
   }
 
@@ -673,6 +634,7 @@ class SalesysApi {
     from: string;
     to: string;
     fixedIntervalType?: 'hour' | 'day' | 'week' | 'month';
+    projectIds?: string[];
   }): Promise<StatisticsData[]> {
     const queryParams = new URLSearchParams({
       from: params.from,
@@ -680,7 +642,12 @@ class SalesysApi {
       fixedIntervalType: params.fixedIntervalType || 'hour'
     });
 
+    if (params.projectIds?.length) {
+      queryParams.set('projectIds', params.projectIds.join(','));
+    }
+
     const url = `https://app.salesys.se/api/orders/statistics-v1/own/issue_1238_2?${queryParams}`;
+    console.log('Making order statistics API call:', url);
     return this.apiCall(url);
   }
 

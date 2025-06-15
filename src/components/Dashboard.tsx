@@ -490,7 +490,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     return (
       <StatisticsView
         statType={selectedStatType!}
-        selectedDate={selectedDate}
         onBack={handleBackToWelcome}
       />
     );

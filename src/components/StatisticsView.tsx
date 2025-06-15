@@ -26,9 +26,16 @@ interface UserStats {
   totalCount: number;
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => {
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'last30days' | 'all'>('last30days');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [projects, setProjects] = useState<Project[]>([]);
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -86,40 +93,38 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
     }
 
     return {
-      from: from.toISOString(),
-      to: to.toISOString()
+      from: from.toISOString().split('T')[0],
+      to: to.toISOString().split('T')[0]
     };
   };
 
-  // Helper function to generate date array for the range
-  const generateDateArray = (range: string): string[] => {
-    const { from, to } = getDateRange(range);
-    const dates: string[] = [];
-    const start = new Date(from);
-    const end = new Date(to);
-    
-    if (range === 'today') {
-      // For today, show hourly data
-      for (let hour = 0; hour < 24; hour++) {
-        const date = new Date(start);
-        date.setHours(hour);
-        dates.push(date.toISOString());
+  // Load projects on component mount
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        // For now, we'll use a mock project since we don't have a projects API
+        // In a real implementation, you'd call: const projects = await salesysApi.getProjects();
+        setProjects([
+          { id: '683eb0ad0c2e3b3a39b7f688', name: 'Default Project' },
+          { id: 'all', name: 'Alla projekt' }
+        ]);
+        setSelectedProjectId('683eb0ad0c2e3b3a39b7f688'); // Default to first project
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        // Set default project even if API fails
+        setProjects([{ id: 'all', name: 'Alla projekt' }]);
+        setSelectedProjectId('all');
       }
-    } else {
-      // For other ranges, show daily data
-      const current = new Date(start);
-      while (current <= end) {
-        dates.push(current.toISOString().split('T')[0]);
-        current.setDate(current.getDate() + 1);
-      }
-    }
-    
-    return dates;
-  };
+    };
+
+    loadProjects();
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [statType, timeRange]);
+    if (selectedProjectId) {
+      loadData();
+    }
+  }, [statType, timeRange, selectedProjectId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -130,150 +135,77 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       let chartData: ChartDataPoint[] = [];
       let total = 0;
 
+      console.log(`Loading ${statType} statistics from ${from} to ${to}, project: ${selectedProjectId}`);
+
       if (statType === 'avtal') {
-        // Load agreements data
-        const dates = generateDateArray(timeRange);
-        const dataPromises = dates.map(async (date, index) => {
-          let dayStart: Date;
-          let dayEnd: Date;
-          
-          if (timeRange === 'today') {
-            // Hourly data for today
-            dayStart = new Date(date);
-            dayEnd = new Date(date);
-            dayEnd.setHours(dayStart.getHours() + 1);
-          } else {
-            // Daily data
-            dayStart = new Date(date + 'T00:00:00.000+01:00');
-            dayEnd = new Date(date + 'T23:59:59.999+01:00');
-          }
-          
-          try {
-            const count = await salesysApi.getOffersCount({
-              statuses: ['signed'],
-              from: dayStart.toISOString(),
-              to: dayEnd.toISOString()
-            });
-            
-            const label = timeRange === 'today' 
-              ? dayStart.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-              : dayStart.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
-            
-            return { 
-              date: timeRange === 'today' ? dayStart.toISOString() : date, 
-              value: count, 
-              label 
-            };
-          } catch (error) {
-            console.error('Error loading daily avtal data:', error);
-            return { date: timeRange === 'today' ? dayStart.toISOString() : date, value: 0, label: '' };
-          }
+        // Use the new statistics API for offers
+        const statsData = await salesysApi.getOfferStatistics({
+          from,
+          to,
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
         });
 
-        chartData = await Promise.all(dataPromises);
-        
-        // Get total for the period
-        total = await salesysApi.getOffersCount({
-          statuses: ['signed'],
-          from,
-          to
+        // Convert statistics data to chart format
+        chartData = statsData.map(item => {
+          const date = new Date(item.intervalStart);
+          const label = timeRange === 'today' 
+            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          
+          return {
+            date: item.intervalStart,
+            value: item.count,
+            label
+          };
         });
+
+        total = chartData.reduce((sum, item) => sum + item.value, 0);
 
       } else if (statType === 'samtal') {
-        // Load calls data
-        const dates = generateDateArray(timeRange);
-        const dataPromises = dates.map(async (date) => {
-          let dayStart: Date;
-          let dayEnd: Date;
-          
-          if (timeRange === 'today') {
-            dayStart = new Date(date);
-            dayEnd = new Date(date);
-            dayEnd.setHours(dayStart.getHours() + 1);
-          } else {
-            dayStart = new Date(date + 'T00:00:00.000+01:00');
-            dayEnd = new Date(date + 'T23:59:59.999+01:00');
-          }
-          
-          try {
-            const response = await salesysApi.getCalls({
-              count: 1,
-              after: dayStart.toISOString(),
-              before: dayEnd.toISOString()
-            });
-            
-            const label = timeRange === 'today' 
-              ? dayStart.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-              : dayStart.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
-            
-            return { 
-              date: timeRange === 'today' ? dayStart.toISOString() : date, 
-              value: response.total, 
-              label 
-            };
-          } catch (error) {
-            console.error('Error loading daily samtal data:', error);
-            return { date: timeRange === 'today' ? dayStart.toISOString() : date, value: 0, label: '' };
-          }
+        // Use the new statistics API for calls
+        const statsData = await salesysApi.getCallStatisticsHourly({
+          from,
+          to,
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
         });
 
-        chartData = await Promise.all(dataPromises);
-        
-        // Get total for the period
-        const totalResponse = await salesysApi.getCalls({
-          count: 1,
-          after: from,
-          before: to
+        chartData = statsData.map(item => {
+          const date = new Date(item.intervalStart);
+          const label = timeRange === 'today' 
+            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          
+          return {
+            date: item.intervalStart,
+            value: item.count,
+            label
+          };
         });
-        total = totalResponse.total;
+
+        total = chartData.reduce((sum, item) => sum + item.value, 0);
 
       } else if (statType === 'ordrar') {
-        // Load orders data
-        const dates = generateDateArray(timeRange);
-        const dataPromises = dates.map(async (date) => {
-          let dayStart: Date;
-          let dayEnd: Date;
-          
-          if (timeRange === 'today') {
-            dayStart = new Date(date);
-            dayEnd = new Date(date);
-            dayEnd.setHours(dayStart.getHours() + 1);
-          } else {
-            dayStart = new Date(date + 'T00:00:00.000+01:00');
-            dayEnd = new Date(date + 'T23:59:59.999+01:00');
-          }
-          
-          try {
-            const response = await salesysApi.getOrders({
-              count: 1,
-              from: dayStart.toISOString(),
-              to: dayEnd.toISOString()
-            });
-            
-            const label = timeRange === 'today' 
-              ? dayStart.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-              : dayStart.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
-            
-            return { 
-              date: timeRange === 'today' ? dayStart.toISOString() : date, 
-              value: response.total, 
-              label 
-            };
-          } catch (error) {
-            console.error('Error loading daily ordrar data:', error);
-            return { date: timeRange === 'today' ? dayStart.toISOString() : date, value: 0, label: '' };
-          }
+        // Use the new statistics API for orders
+        const statsData = await salesysApi.getOrderStatisticsHourly({
+          from,
+          to,
+          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day'
         });
 
-        chartData = await Promise.all(dataPromises);
-        
-        // Get total for the period
-        const totalResponse = await salesysApi.getOrders({
-          count: 1,
-          from,
-          to
+        chartData = statsData.map(item => {
+          const date = new Date(item.intervalStart);
+          const label = timeRange === 'today' 
+            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          
+          return {
+            date: item.intervalStart,
+            value: item.count,
+            label
+          };
         });
-        total = totalResponse.total;
+
+        total = chartData.reduce((sum, item) => sum + item.value, 0);
       }
 
       setData(chartData);
@@ -305,25 +237,22 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
               statuses: ['signed'],
               from,
               to,
-              count: 1000 // Get a large number to count properly
+              count: 100
             });
-            // Filter by userId if the API supports it, otherwise count all for now
             count = offers.data.length;
           } else if (statType === 'samtal') {
             const calls = await salesysApi.getCalls({
               after: from,
               before: to,
-              count: 1000
+              count: 100
             });
-            // Filter by userId if available in call data
             count = calls.data.filter(call => call.userId === user.id).length;
           } else if (statType === 'ordrar') {
             const orders = await salesysApi.getOrders({
               from,
               to,
-              count: 1000
+              count: 100
             });
-            // Filter by userId if available in order data
             count = orders.data.filter(order => order.userId === user.id).length;
           }
         } catch (error) {
@@ -338,7 +267,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       });
 
       const stats = await Promise.all(userStatsPromises);
-      // Sort by totalCount descending and take top 10
       const sortedStats = stats
         .filter(stat => stat.totalCount > 0)
         .sort((a, b) => b.totalCount - a.totalCount)
@@ -402,7 +330,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
           </div>
         </div>
 
-        {/* Time Range Selector */}
+        {/* Filters */}
         <div className="flex items-center gap-4 mb-6">
           <Select value={timeRange} onValueChange={(value: 'today' | 'week' | 'month' | 'last30days' | 'all') => setTimeRange(value)}>
             <SelectTrigger className="w-48">
@@ -414,6 +342,19 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
               <SelectItem value="month">Denna månad</SelectItem>
               <SelectItem value="last30days">Senaste 30 dagarna</SelectItem>
               <SelectItem value="all">Hela året</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Välj projekt" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
