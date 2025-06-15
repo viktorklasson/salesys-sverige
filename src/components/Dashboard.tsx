@@ -122,29 +122,63 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
   // Helper function to crop chart data to only show hours with data
   const cropChartData = (data: Array<{ date: string; value: number }>): Array<{ date: string; value: number }> => {
-    // Find first and last hour with data
-    let firstHourWithData = -1;
-    let lastHourWithData = -1;
+    // For welcome cards, we want to show the full day range if it's today, or show data range for other days
+    if (data.length === 0) return [];
 
-    for (let i = 0; i < data.length; i++) {
-      if (data[i].value > 0) {
-        if (firstHourWithData === -1) {
-          firstHourWithData = i;
+    // If it's today, show more hours to give better context
+    if (isToday(selectedDate)) {
+      // Find first and last hour with data
+      let firstHourWithData = -1;
+      let lastHourWithData = -1;
+
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].value > 0) {
+          if (firstHourWithData === -1) {
+            firstHourWithData = i;
+          }
+          lastHourWithData = i;
         }
-        lastHourWithData = i;
       }
+
+      // If no data found, show current time range
+      if (firstHourWithData === -1) {
+        const currentHour = new Date().getHours();
+        const startIndex = Math.max(0, currentHour - 3);
+        const endIndex = Math.min(data.length - 1, currentHour + 1);
+        return data.slice(startIndex, endIndex + 1);
+      }
+
+      // Show from start of data to current hour + 1, or end of data
+      const currentHour = new Date().getHours();
+      const startIndex = Math.max(0, firstHourWithData - 1);
+      const endIndex = Math.min(data.length - 1, Math.max(lastHourWithData + 1, currentHour + 1));
+
+      return data.slice(startIndex, endIndex + 1);
+    } else {
+      // For other days, show the data range
+      let firstHourWithData = -1;
+      let lastHourWithData = -1;
+
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].value > 0) {
+          if (firstHourWithData === -1) {
+            firstHourWithData = i;
+          }
+          lastHourWithData = i;
+        }
+      }
+
+      // If no data found, return empty array
+      if (firstHourWithData === -1) {
+        return [];
+      }
+
+      // Add some padding around the data (1 hour before first, 1 hour after last)
+      const startIndex = Math.max(0, firstHourWithData - 1);
+      const endIndex = Math.min(data.length - 1, lastHourWithData + 1);
+
+      return data.slice(startIndex, endIndex + 1);
     }
-
-    // If no data found, return empty array
-    if (firstHourWithData === -1) {
-      return [];
-    }
-
-    // Add some padding around the data (1 hour before first, 1 hour after last)
-    const startIndex = Math.max(0, firstHourWithData - 1);
-    const endIndex = Math.min(data.length - 1, lastHourWithData + 1);
-
-    return data.slice(startIndex, endIndex + 1);
   };
 
   // Helper function to get relative date text
@@ -404,9 +438,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Avtal signerade"
               count={getTotalFromHourlyData(avtalsData)}
-              isLoading={!avtalsData.length}
+              isLoading={avtalsData.length === 0}
               color="green"
-              chartData={croppedAvtalsData}
+              chartData={croppedAvtalsData.length > 0 ? croppedAvtalsData : (avtalsData.length > 0 ? avtalsData : [])}
               onClick={() => handleStatisticsClick('avtal')}
               showLiveDot={isSelectedDateToday}
             />
@@ -414,9 +448,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Samtal genomförda"
               count={getTotalFromHourlyData(samtalData)}
-              isLoading={!samtalData.length}
+              isLoading={samtalData.length === 0}
               color="blue"
-              chartData={croppedSamtalData}
+              chartData={croppedSamtalData.length > 0 ? croppedSamtalData : (samtalData.length > 0 ? samtalData : [])}
               onClick={() => handleStatisticsClick('samtal')}
               showLiveDot={isSelectedDateToday}
             />
@@ -424,9 +458,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <DashboardCard
               title="Ordrar skapade"
               count={getTotalFromHourlyData(ordrarData)}
-              isLoading={!ordrarData.length}
+              isLoading={ordrarData.length === 0}
               color="purple"
-              chartData={croppedOrdrarData}
+              chartData={croppedOrdrarData.length > 0 ? croppedOrdrarData : (ordrarData.length > 0 ? ordrarData : [])}
               onClick={() => handleStatisticsClick('ordrar')}
               showLiveDot={isSelectedDateToday}
             />
