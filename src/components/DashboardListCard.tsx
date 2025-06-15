@@ -19,19 +19,24 @@ const DashboardListCard: React.FC<DashboardListCardProps> = ({
   return (
     <Card 
       className={cn(
-        'transition-all duration-200 hover:shadow-md cursor-pointer bg-white border-0 shadow-sm rounded-2xl',
+        'transition-all duration-200 hover:shadow-lg cursor-pointer bg-white border-0 shadow-sm rounded-2xl hover:scale-[1.02]',
         className
       )}
       onClick={onClick}
     >
-      <CardHeader className="pb-3">
+      <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-800">
-            {dashboard.name}
-          </CardTitle>
-          <ChevronRight className="h-4 w-4 text-blue-600" />
+          <div className="flex flex-col">
+            <h3 className="text-lg font-light text-gray-800 mb-1">
+              {dashboard.name}
+            </h3>
+            <p className="text-sm text-gray-500">Klicka för att visa</p>
+          </div>
+          <div className="flex items-center justify-center w-10 h-10 bg-blue-50 rounded-full">
+            <ChevronRight className="h-5 w-5 text-blue-600" />
+          </div>
         </div>
-      </CardHeader>
+      </CardContent>
     </Card>
   );
 };
