@@ -54,49 +54,6 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
     purple: 'bg-purple-500',
   };
 
-  // Calculate average and trend
-  const calculateAverage = () => {
-    if (!chartData || chartData.length === 0) return null;
-    
-    const total = chartData.reduce((sum, item) => sum + item.value, 0);
-    const average = total / chartData.length;
-    const todayValue = count;
-    
-    let trend: 'up' | 'down' | 'neutral' = 'neutral';
-    if (todayValue > average) trend = 'up';
-    else if (todayValue < average) trend = 'down';
-    
-    return {
-      average: Math.round(average * 10) / 10, // Round to 1 decimal
-      trend,
-      difference: Math.abs(todayValue - average)
-    };
-  };
-
-  const averageData = calculateAverage();
-
-  const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="h-3 w-3" />;
-      case 'down':
-        return <TrendingDown className="h-3 w-3" />;
-      default:
-        return <Minus className="h-3 w-3" />;
-    }
-  };
-
-  const getTrendColor = (trend: 'up' | 'down' | 'neutral') => {
-    switch (trend) {
-      case 'up':
-        return 'text-green-600';
-      case 'down':
-        return 'text-red-600';
-      default:
-        return 'text-gray-500';
-    }
-  };
-
   return (
     <Card 
       className={cn(
@@ -106,22 +63,6 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
       )}
       onClick={onClick}
     >
-      {/* Background Average Badge */}
-      {averageData && !isLoading && !error && (
-        <div className="absolute top-3 right-3 z-0">
-          <Badge 
-            variant="outline" 
-            className="text-xs opacity-90 bg-gray-50 border-gray-200"
-            style={{ color: chartColors[color] }}
-          >
-            <span className="flex items-center gap-1">
-              {getTrendIcon(averageData.trend)}
-              Ø {averageData.average}/dag
-            </span>
-          </Badge>
-        </div>
-      )}
-
       <CardHeader className="pb-3 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -157,38 +98,6 @@ const DashboardCard: React.FC<DashboardCardProps> = ({
               )}
               {chartData && chartData.length > 0 && !isLoading && !error && (
                 <MiniChart data={chartData} color={color} />
-              )}
-              
-              {/* Summary Cards */}
-              {!isLoading && !error && (weeklyTotal !== undefined || monthlyTotal !== undefined) && (
-                <div className="grid grid-cols-3 gap-2 mt-4">
-                  {/* Weekly Total */}
-                  <div className="p-2 rounded-lg border border-gray-200 bg-white text-left">
-                    <div className="text-xs text-gray-500 mb-1">Vecka</div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: chartColors[color] }}
-                    >
-                      {weeklyTotal !== undefined ? weeklyTotal.toLocaleString('sv-SE') : '--'}
-                    </div>
-                  </div>
-                  
-                  {/* Monthly Total */}
-                  <div className="p-2 rounded-lg border border-gray-200 bg-white text-left">
-                    <div className="text-xs text-gray-500 mb-1">Månad</div>
-                    <div 
-                      className="text-sm font-medium"
-                      style={{ color: chartColors[color] }}
-                    >
-                      {monthlyTotal !== undefined ? monthlyTotal.toLocaleString('sv-SE') : '--'}
-                    </div>
-                  </div>
-                  
-                  {/* Navigation */}
-                  <div className="p-2 rounded-lg border border-gray-200 bg-white flex items-center justify-center">
-                    <ArrowRight className="h-4 w-4" style={{ color: chartColors[color] }} />
-                  </div>
-                </div>
               )}
             </>
           )}
