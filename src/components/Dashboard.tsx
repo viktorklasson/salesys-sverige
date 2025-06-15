@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,6 @@ import {
 } from "@/components/ui/table"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -409,8 +409,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      // Redirect to login page
-      navigate('/login');
+      // Force reload to reset all state and redirect to login
+      window.location.href = '/';
     } catch (error) {
       console.error('Error logging out:', error);
       toast({
