@@ -140,20 +140,18 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       const projectIds = selectedProjectId === 'all' ? undefined : [selectedProjectId];
 
       if (statType === 'avtal') {
-        // Use the new statistics API for offers
+        // Use "day" interval for detailed statistics view
         const statsData = await salesysApi.getOfferStatistics({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          fixedIntervalType: 'day',
           projectIds
         });
 
         // Convert statistics data to chart format
         chartData = statsData.map(item => {
           const date = new Date(item.intervalStart);
-          const label = timeRange === 'today' 
-            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          const label = date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
           
           return {
             date: item.intervalStart,
@@ -165,19 +163,17 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         total = chartData.reduce((sum, item) => sum + item.value, 0);
 
       } else if (statType === 'samtal') {
-        // Use the new statistics API for calls
+        // Use "day" interval for detailed statistics view
         const statsData = await salesysApi.getCallStatisticsHourly({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          fixedIntervalType: 'day',
           projectIds
         });
 
         chartData = statsData.map(item => {
           const date = new Date(item.intervalStart);
-          const label = timeRange === 'today' 
-            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          const label = date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
           
           return {
             date: item.intervalStart,
@@ -189,19 +185,17 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
         total = chartData.reduce((sum, item) => sum + item.value, 0);
 
       } else if (statType === 'ordrar') {
-        // Use the new statistics API for orders
+        // Use "day" interval for detailed statistics view
         const statsData = await salesysApi.getOrderStatisticsHourly({
           from,
           to,
-          fixedIntervalType: timeRange === 'today' ? 'hour' : 'day',
+          fixedIntervalType: 'day',
           projectIds
         });
 
         chartData = statsData.map(item => {
           const date = new Date(item.intervalStart);
-          const label = timeRange === 'today' 
-            ? date.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })
-            : date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          const label = date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
           
           return {
             date: item.intervalStart,
