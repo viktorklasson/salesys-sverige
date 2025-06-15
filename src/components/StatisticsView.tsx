@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface StatisticsViewProps {
   statType: 'avtal' | 'samtal' | 'ordrar';
   onBack: () => void;
+  cachedStatisticsData?: Map<string, any>;
 }
 
 interface ChartDataPoint {
@@ -30,7 +31,7 @@ interface Project {
   name: string;
 }
 
-const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => {
+const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack, cachedStatisticsData }) => {
   const { toast } = useToast();
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'last30days' | 'all'>('last30days');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -123,7 +124,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
     if (selectedProjectId) {
       loadData();
     }
-  }, [statType, timeRange, selectedProjectId]);
+  }, [statType, timeRange, selectedProjectId, cachedStatisticsData]);
 
   const loadData = async () => {
     setLoading(true);
@@ -135,6 +136,33 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ statType, onBack }) => 
       let total = 0;
 
       console.log(`Loading ${statType} statistics from ${from} to ${to}, project: ${selectedProjectId}`);
+
+      // Check if we have cached data for this combination
+      const cacheKey = `${statType}-${timeRange}`;
+      if (cachedStatisticsData && cachedStatisticsData.has(cacheKey) && selectedProjectId === 'all') {
+        console.log(`Using cached statistics for ${cacheKey}`);
+        const cachedData = cachedStatisticsData.get(cacheKey);
+        
+        chartData = cachedData.map((item: any) => {
+          const date = new Date(item.intervalStart);
+          const label = date.toLocaleDateString('sv-SE', { month: 'short', day: 'numeric' });
+          
+          return {
+            date: item.intervalStart,
+            value: item.count,
+            label
+          };
+        });
+
+        total = chartData.reduce((sum, item) => sum + item.value, 0);
+        setData(chartData);
+        setTotalCount(total);
+        setLoading(false);
+        
+        // Still load user stats in background
+        loadUserStats(from, to);
+        return;
+      }
 
       // Prepare project IDs for API call
       const projectIds = selectedProjectId === 'all' ? undefined : [selectedProjectId];

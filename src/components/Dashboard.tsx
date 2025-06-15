@@ -77,8 +77,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const [loadingDashboardResults, setLoadingDashboardResults] = useState(false);
   const [userFirstName, setUserFirstName] = useState<string>('');
   const [loadingUserName, setLoadingUserName] = useState(true);
-  const [cachedDashboardResults, setCachedDashboardResults] = useState<Map<string, any>>(new Map());
-  const [loadingCachedResults, setLoadingCachedResults] = useState(false);
+  const [cachedStatisticsData, setCachedStatisticsData] = useState<Map<string, any>>(new Map());
+  const [loadingCachedStatistics, setLoadingCachedStatistics] = useState(false);
 
   // Helper function to extract username from s2_uname cookie
   const getUsernameFromCookie = (): string | null => {
@@ -323,48 +323,117 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     loadStatistics();
   }, [selectedDate, currentView]);
 
-  // Load dashboards and their results in background when navigating to welcome
+  // Load detailed statistics data in background when navigating to welcome
   useEffect(() => {
     if (currentView !== 'welcome') return;
 
-    const loadDashboardsAndResults = async () => {
+    const loadDetailedStatistics = async () => {
+      setLoadingCachedStatistics(true);
+      try {
+        console.log('Starting background fetch of detailed statistics data...');
+        
+        // Get date ranges for different time periods that the user might select
+        const now = new Date();
+        const dateRanges = {
+          'last30days': {
+            from: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30).toISOString().split('T')[0],
+            to: now.toISOString().split('T')[0]
+          },
+          'month': {
+            from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+            to: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+          },
+          'week': {
+            from: (() => {
+              const currentDay = now.getDay();
+              const startOfWeek = new Date(now);
+              startOfWeek.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+              return startOfWeek.toISOString().split('T')[0];
+            })(),
+            to: (() => {
+              const currentDay = now.getDay();
+              const endOfWeek = new Date(now);
+              endOfWeek.setDate(now.getDate() + (currentDay === 0 ? 0 : 7 - currentDay));
+              return endOfWeek.toISOString().split('T')[0];
+            })()
+          }
+        };
+
+        // Load statistics for different time ranges and stat types
+        const statisticsPromises = [];
+        const statTypes = ['avtal', 'samtal', 'ordrar'] as const;
+        
+        for (const [timeRange, { from, to }] of Object.entries(dateRanges)) {
+          for (const statType of statTypes) {
+            statisticsPromises.push(
+              (async () => {
+                try {
+                  let data;
+                  if (statType === 'avtal') {
+                    data = await salesysApi.getOfferStatistics({
+                      from,
+                      to,
+                      fixedIntervalType: 'day'
+                    });
+                  } else if (statType === 'samtal') {
+                    data = await salesysApi.getCallStatisticsHourly({
+                      from,
+                      to,
+                      fixedIntervalType: 'day'
+                    });
+                  } else if (statType === 'ordrar') {
+                    data = await salesysApi.getOrderStatisticsHourly({
+                      from,
+                      to,
+                      fixedIntervalType: 'day'
+                    });
+                  }
+                  
+                  const cacheKey = `${statType}-${timeRange}`;
+                  console.log(`Loaded detailed statistics for ${cacheKey}:`, data);
+                  return { cacheKey, data };
+                } catch (error) {
+                  console.error(`Error loading detailed statistics for ${statType}-${timeRange}:`, error);
+                  return { cacheKey: `${statType}-${timeRange}`, data: null };
+                }
+              })()
+            );
+          }
+        }
+
+        // Wait for all statistics to load
+        const allStatistics = await Promise.all(statisticsPromises);
+        
+        // Cache the results
+        const statisticsMap = new Map();
+        allStatistics.forEach(({ cacheKey, data }) => {
+          if (data) {
+            statisticsMap.set(cacheKey, data);
+          }
+        });
+        
+        setCachedStatisticsData(statisticsMap);
+        console.log('Cached all detailed statistics:', statisticsMap);
+        setLoadingCachedStatistics(false);
+      } catch (error) {
+        console.error('Error loading detailed statistics:', error);
+        setLoadingCachedStatistics(false);
+      }
+    };
+
+    loadDetailedStatistics();
+  }, [currentView]);
+
+  // Load dashboards when navigating to welcome
+  useEffect(() => {
+    if (currentView !== 'welcome') return;
+
+    const loadDashboards = async () => {
       setLoadingDashboards(true);
       try {
         const dashboardsData = await salesysApi.getDashboards();
         setDashboards(dashboardsData);
         console.log('Loaded dashboards:', dashboardsData);
-
-        // Start loading all dashboard results in background
-        if (dashboardsData.length > 0) {
-          setLoadingCachedResults(true);
-          console.log('Starting background fetch of all dashboard results...');
-          
-          const resultsPromises = dashboardsData.map(async (dashboard) => {
-            try {
-              const results = await salesysApi.getDashboardResults(dashboard.id);
-              console.log(`Loaded results for dashboard ${dashboard.id}:`, results);
-              return { dashboardId: dashboard.id, results };
-            } catch (error) {
-              console.error(`Error loading results for dashboard ${dashboard.id}:`, error);
-              return { dashboardId: dashboard.id, results: null };
-            }
-          });
-
-          // Wait for all dashboard results to load
-          const allResults = await Promise.all(resultsPromises);
-          
-          // Cache the results
-          const resultsMap = new Map();
-          allResults.forEach(({ dashboardId, results }) => {
-            if (results) {
-              resultsMap.set(dashboardId, results);
-            }
-          });
-          
-          setCachedDashboardResults(resultsMap);
-          console.log('Cached all dashboard results:', resultsMap);
-          setLoadingCachedResults(false);
-        }
       } catch (error) {
         console.error('Error loading dashboards:', error);
         toast({
@@ -377,7 +446,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       }
     };
 
-    loadDashboardsAndResults();
+    loadDashboards();
   }, [currentView]);
 
   // Load dial groups only when navigating to the ringlistor section
@@ -434,27 +503,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     loadDialGroupSummaries();
   }, [dialGroups, currentView, activeSection]);
 
-  // Updated: Load dashboard results (now uses cache first)
+  // Load dashboard results
   useEffect(() => {
     if (!selectedDashboard || currentView !== 'dashboard') return;
 
     const loadDashboardResults = async () => {
-      // Check if we have cached results first
-      if (cachedDashboardResults.has(selectedDashboard.id)) {
-        console.log(`Using cached results for dashboard ${selectedDashboard.id}`);
-        setDashboardResults(cachedDashboardResults.get(selectedDashboard.id));
-        return;
-      }
-
-      // If not cached, load from API
       setLoadingDashboardResults(true);
       try {
         const results = await salesysApi.getDashboardResults(selectedDashboard.id);
         setDashboardResults(results);
         console.log('Loaded dashboard results:', results);
-        
-        // Update cache
-        setCachedDashboardResults(prev => new Map(prev).set(selectedDashboard.id, results));
       } catch (error) {
         console.error('Error loading dashboard results:', error);
         toast({
@@ -468,7 +526,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     };
 
     loadDashboardResults();
-  }, [selectedDashboard, currentView, cachedDashboardResults]);
+  }, [selectedDashboard, currentView]);
 
   const getTotalFromHourlyData = (data: Array<{ date: string; value: number }>): number => {
     return data.reduce((sum, item) => sum + item.value, 0);
@@ -488,11 +546,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const handleDashboardClick = (dashboard: any) => {
     setSelectedDashboard(dashboard);
     setCurrentView('dashboard');
-    
-    // If we have cached results, no loading state needed
-    if (cachedDashboardResults.has(dashboard.id)) {
-      setDashboardResults(cachedDashboardResults.get(dashboard.id));
-    }
   };
 
   const handleStatisticsClick = (statType: 'avtal' | 'samtal' | 'ordrar') => {
@@ -635,9 +688,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             <CardHeader>
               <CardTitle className="text-lg font-light flex items-center gap-2">
                 Statistikvyer
-                {loadingCachedResults && (
+                {loadingCachedStatistics && (
                   <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    Laddar data i bakgrunden...
+                    Laddar statistikdata i bakgrunden...
                   </div>
                 )}
               </CardTitle>
@@ -691,6 +744,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       <StatisticsView
         statType={selectedStatType!}
         onBack={handleBackToWelcome}
+        cachedStatisticsData={cachedStatisticsData}
       />
     );
   }
@@ -787,7 +841,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     );
   }
 
-  // Dashboard view - updated to use DashboardDetailView
+  // Dashboard view
   return (
     <DashboardDetailView
       dashboard={selectedDashboard}
