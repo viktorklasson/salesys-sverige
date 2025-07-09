@@ -115,11 +115,6 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
 
       setGroupBy(newGroupBy);
       await loadDashboardResults();
-      
-      toast({
-        title: "Uppdaterat",
-        description: `Visning ändrad till ${getGroupByLabel(newGroupBy)}`,
-      });
     } catch (error) {
       console.error('Error updating groupBy:', error);
       toast({
