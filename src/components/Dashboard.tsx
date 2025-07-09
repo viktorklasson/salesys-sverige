@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings, LogOut } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings, LogOut, Grid3X3 } from 'lucide-react';
 import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -56,7 +56,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'welcome' | 'section' | 'dashboard' | 'statistics'>('welcome');
+  const [currentView, setCurrentView] = useState<'welcome' | 'navigation' | 'section' | 'dashboard' | 'statistics'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
   const [selectedDashboard, setSelectedDashboard] = useState<any>(null);
   const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar' | null>(null);
@@ -570,6 +570,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
     setDashboardResults(null);
   };
 
+  const handleNavigationClick = () => {
+    setCurrentView('navigation');
+  };
+
   const handleLogout = async () => {
     try {
       console.log('Logging out - clearing auth cookies and Supabase session');
@@ -603,6 +607,14 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
         <div className="container mx-auto px-4 py-12 flex-1">
           <div className="flex justify-between items-start mb-6 mt-12">
             <div className="flex items-baseline gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNavigationClick}
+                className="border-0 mr-2"
+              >
+                <Grid3X3 className="h-5 w-5" />
+              </Button>
               <h1 className="text-4xl font-light text-gray-800">
                 Hej {loadingUserName ? '...' : userFirstName}
               </h1>
@@ -661,27 +673,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
             />
           </div>
 
-          {/* Navigation Buttons */}
-          <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="outline"
-              onClick={() => handleSectionNavigation('anvandare')}
-            >
-              Användare
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleSectionNavigation('ringlistor')}
-            >
-              Ringlistor
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleSectionNavigation('team')}
-            >
-              Team
-            </Button>
-          </div>
 
           {/* Dashboards List */}
           <Card className="bg-white border-0 shadow-sm rounded-2xl">
@@ -836,6 +827,80 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               </CardContent>
             </Card>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'navigation') {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-light text-gray-800">Navigation</h1>
+            <Button variant="outline" onClick={handleBackToWelcome}>
+              Tillbaka till översikt
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
+            <Card 
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => handleSectionNavigation('anvandare')}
+            >
+              <CardContent className="p-6 text-center">
+                <Users className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Användare</h3>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => handleSectionNavigation('ringlistor')}
+            >
+              <CardContent className="p-6 text-center">
+                <Phone className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Ringlistor</h3>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => handleStatisticsClick('avtal')}
+            >
+              <CardContent className="p-6 text-center">
+                <CheckCircle className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Avtal</h3>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => handleStatisticsClick('samtal')}
+            >
+              <CardContent className="p-6 text-center">
+                <Phone className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Samtal</h3>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
+              onClick={() => handleStatisticsClick('ordrar')}
+            >
+              <CardContent className="p-6 text-center">
+                <UserPlus className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Ordrar</h3>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-6 text-center">
+                <Settings className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="text-lg font-light text-gray-800">Inställningar</h3>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
