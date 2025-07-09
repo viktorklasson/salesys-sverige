@@ -604,12 +604,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        {/* Fixed Home Icon */}
+        {/* Fixed Home Icon with Squircle Frosted Glass */}
         <Button
           variant="ghost"
           size="icon"
           onClick={handleNavigationClick}
-          className="fixed top-4 left-4 z-10 border-0"
+          className="fixed top-4 left-4 z-10 border-0 bg-white/20 backdrop-blur-md rounded-3xl shadow-lg hover:bg-white/30 transition-all duration-200"
         >
           <Home className="h-4 w-4" strokeWidth={1} />
         </Button>
