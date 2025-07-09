@@ -175,10 +175,27 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
   };
 
   const formatValue = (value: number, unit?: string): string => {
-    const formattedValue = Number(value.toFixed(2));
-    if (unit === 'percent') {
-      return `${(formattedValue * 100).toFixed(2)}%`;
+    if (unit === 'milliseconds') {
+      const totalSeconds = Math.floor(value / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+      } else {
+        return `${seconds}s`;
+      }
     }
+    
+    if (unit === 'percent') {
+      return `${(value * 100).toFixed(1)}%`;
+    }
+    
+    // Default formatting for other units or no unit
+    const formattedValue = Number(value.toFixed(2));
     return formattedValue.toLocaleString('sv-SE');
   };
 
