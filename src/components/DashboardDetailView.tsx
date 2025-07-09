@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { salesysApi, Dashboard, DashboardResult } from '@/services/salesysApi';
+import { salesysApi, Dashboard, DashboardResult, User, Team, DialGroup } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -25,10 +25,20 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
   const [error, setError] = useState('');
   const [groupBy, setGroupBy] = useState<GroupByOption>(null);
   const [updatingGroupBy, setUpdatingGroupBy] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [dialGroups, setDialGroups] = useState<DialGroup[]>([]);
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
 
   useEffect(() => {
     loadDashboardResults();
   }, [dashboard.id]);
+
+  useEffect(() => {
+    if (groupBy) {
+      loadEntityData();
+    }
+  }, [groupBy]);
 
   const loadDashboardResults = async () => {
     setLoading(true);
@@ -53,6 +63,37 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEntityData = async () => {
+    if (!groupBy) return;
+    
+    setEntitiesLoading(true);
+    try {
+      switch (groupBy) {
+        case 'user':
+          const userData = await salesysApi.getUsers();
+          setUsers(userData);
+          break;
+        case 'team':
+          const teamData = await salesysApi.getTeams();
+          setTeams(teamData);
+          break;
+        case 'leadList':
+          const dialGroupData = await salesysApi.getDialGroups();
+          setDialGroups(dialGroupData.data);
+          break;
+      }
+    } catch (error) {
+      console.error('Error loading entity data:', error);
+      toast({
+        title: "Fel",
+        description: "Kunde inte ladda entitetsdata",
+        variant: "destructive",
+      });
+    } finally {
+      setEntitiesLoading(false);
     }
   };
 
@@ -97,6 +138,24 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
       case 'team': return 'Team';
       case 'leadList': return 'Ringlista';
       default: return 'Standard';
+    }
+  };
+
+  const getEntityName = (groupedId: string): string => {
+    if (!groupBy) return '';
+    
+    switch (groupBy) {
+      case 'user':
+        const user = users.find(u => u.id === groupedId);
+        return user ? user.fullName : `Okänd användare (${groupedId})`;
+      case 'team':
+        const team = teams.find(t => t.id === groupedId);
+        return team ? team.name : `Okänt team (${groupedId})`;
+      case 'leadList':
+        const dialGroup = dialGroups.find(d => d.id === groupedId);
+        return dialGroup ? dialGroup.name : `Okänd ringlista (${groupedId})`;
+      default:
+        return '';
     }
   };
 
@@ -167,6 +226,11 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
                 </CardTitle>
                 {getTrendIcon(trend)}
               </div>
+              {groupBy && (
+                <div className="text-xs text-gray-500 mt-1">
+                  {entitiesLoading ? 'Laddar...' : getEntityName(result.groupedId)}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -247,6 +311,7 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
           <TableHeader>
             <TableRow>
               <TableHead>Namn</TableHead>
+              {groupBy && <TableHead>Entitet</TableHead>}
               <TableHead>Senaste värde</TableHead>
               <TableHead>Trend</TableHead>
               <TableHead>Intervall</TableHead>
@@ -263,6 +328,11 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
                   <TableCell className="font-medium">
                     {reader?.name || 'Unnamed Reader'}
                   </TableCell>
+                  {groupBy && (
+                    <TableCell className="text-sm text-gray-600">
+                      {entitiesLoading ? 'Laddar...' : getEntityName(result.groupedId)}
+                    </TableCell>
+                  )}
                   <TableCell className="text-blue-600 font-medium">
                     {formatValue(latestValue, reader?.unit)}
                   </TableCell>
