@@ -299,52 +299,61 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
     </div>
   );
 
-  const renderTable = () => (
-    <Card className="bg-white border-0 shadow-sm rounded-2xl">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Namn</TableHead>
-              {groupBy && <TableHead>Entitet</TableHead>}
-              <TableHead>Senaste värde</TableHead>
-              <TableHead>Trend</TableHead>
-              <TableHead>Intervall</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {results.map((result) => {
-              const reader = dashboard.readers.find(r => r.id === result.readerId);
-              const latestValue = getLatestValue(result);
-              const trend = getTrend(result);
+  const renderTable = () => {
+    // Group results by groupedId to create rows
+    const groupedResults = results.reduce((acc, result) => {
+      const key = result.groupedId || 'default';
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(result);
+      return acc;
+    }, {} as Record<string, DashboardResult[]>);
 
-              return (
-                <TableRow key={result.readerId}>
-                  <TableCell className="font-medium">
-                    {reader?.name || 'Unnamed Reader'}
-                  </TableCell>
-                  {groupBy && (
-                    <TableCell className="text-sm text-gray-600">
-                      {entitiesLoading ? 'Laddar...' : getEntityName(result.groupedId)}
+    return (
+      <Card className="bg-white border-0 shadow-sm rounded-2xl">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Entitet</TableHead>
+                {dashboard.readers.map((reader) => (
+                  <TableHead key={reader.id}>{reader.name}</TableHead>
+                ))}
+                <TableHead>Trend</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(groupedResults).map(([groupedId, groupResults]) => {
+                const entityName = groupBy ? getEntityName(groupedId) : 'Alla';
+                
+                return (
+                  <TableRow key={groupedId}>
+                    <TableCell className="font-medium">
+                      {entitiesLoading ? 'Laddar...' : entityName}
                     </TableCell>
-                  )}
-                  <TableCell className="text-blue-600 font-medium">
-                    {formatValue(latestValue, reader?.unit)}
-                  </TableCell>
-                  <TableCell>
-                    {getTrendIcon(trend)}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-500">
-                    {result.intervals.length} datapunkter
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
+                    {dashboard.readers.map((reader) => {
+                      const result = groupResults.find(r => r.readerId === reader.id);
+                      const latestValue = result ? getLatestValue(result) : 0;
+                      return (
+                        <TableCell key={reader.id} className="text-blue-600 font-medium">
+                          {formatValue(latestValue, reader.unit)}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell>
+                      {/* Show trend for the first reader as an example */}
+                      {groupResults.length > 0 && getTrendIcon(getTrend(groupResults[0]))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-white">
