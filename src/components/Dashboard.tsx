@@ -609,7 +609,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
           variant="ghost"
           size="icon"
           onClick={handleNavigationClick}
-          className="fixed top-4 left-4 z-10 border-0 bg-white/20 backdrop-blur-md rounded-3xl shadow-lg hover:bg-white/30 transition-all duration-200"
+          className="fixed top-4 left-4 z-[8000] border-0 bg-white/20 backdrop-blur-md rounded-3xl shadow-lg hover:bg-white/30 transition-all duration-200"
         >
           <Home className="h-4 w-4" strokeWidth={1} />
         </Button>
