@@ -403,9 +403,6 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
           </Button>
           <div className="flex-1">
             <h1 className="text-2xl font-light text-gray-800">{dashboard.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {dashboard.readers.length} reader{dashboard.readers.length !== 1 ? 's' : ''} • ID: {dashboard.id}
-            </p>
           </div>
         </div>
 
