@@ -31,7 +31,7 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
   const [entitiesLoading, setEntitiesLoading] = useState(false);
 
   useEffect(() => {
-    loadDashboardResults();
+    initializeDashboard();
   }, [dashboard.id]);
 
   useEffect(() => {
@@ -39,6 +39,22 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
       loadEntityData();
     }
   }, [groupBy]);
+
+  const initializeDashboard = async () => {
+    // Check current groupBy setting from dashboard
+    const currentGroupBy = dashboard.groupBy as GroupByOption;
+    
+    if (currentGroupBy && ['user', 'team', 'leadList'].includes(currentGroupBy)) {
+      // Use existing groupBy setting
+      setGroupBy(currentGroupBy);
+    } else {
+      // Default to 'user' if no valid groupBy is set
+      setGroupBy('user');
+      await updateGroupBy('user');
+    }
+    
+    await loadDashboardResults();
+  };
 
   const loadDashboardResults = async () => {
     setLoading(true);
