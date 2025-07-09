@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings, LogOut, Grid3X3 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Phone, Users, UserPlus, CheckCircle, XCircle, Settings, LogOut, Home } from 'lucide-react';
 import { salesysApi } from '@/services/salesysApi';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -606,21 +606,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
       <div className="min-h-screen bg-white flex flex-col">
         <div className="container mx-auto px-4 py-12 flex-1">
           <div className="flex justify-between items-start mb-6 mt-12">
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-col gap-3">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleNavigationClick}
-                className="border-0 mr-2"
+                className="border-0 self-start"
               >
-                <Grid3X3 className="h-5 w-5" />
+                <Home className="h-4 w-4" strokeWidth={1} />
               </Button>
-              <h1 className="text-4xl font-light text-gray-800">
-                Hej {loadingUserName ? '...' : userFirstName}
-              </h1>
-              <p className="text-lg text-gray-600">
-                {getRelativeDateText(selectedDate)}
-              </p>
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-4xl font-light text-gray-800">
+                  Hej {loadingUserName ? '...' : userFirstName}
+                </h1>
+                <p className="text-lg text-gray-600">
+                  {getRelativeDateText(selectedDate)}
+                </p>
+              </div>
             </div>
             <Popover>
               <PopoverTrigger asChild>
