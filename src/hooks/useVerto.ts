@@ -33,7 +33,7 @@ export function useVerto() {
       }
 
       const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/gh/freeswitch/verto-client/dist/verto.min.js';
+      script.src = '/verto.min.js';
       script.onload = () => {
         isLoadedRef.current = true;
         resolve();
