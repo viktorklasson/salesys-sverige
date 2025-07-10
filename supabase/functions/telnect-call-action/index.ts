@@ -26,13 +26,13 @@ serve(async (req) => {
 
     console.log('Sending to Telnect API:', JSON.stringify(requestBody, null, 2))
 
-    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}`, {
+    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}/actions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${telnectToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(actions)
     })
 
     console.log('Telnect API response status:', response.status)
