@@ -83,6 +83,9 @@ export function PhoneInterface() {
         phoneLineData = await createPhoneLine();
       }
 
+      let parkCallReady = false;
+      let outboundCallId: string | null = null;
+
       // Initialize Verto
       await verto.initialize({
         login: phoneLineData.username,
@@ -93,18 +96,50 @@ export function PhoneInterface() {
           // Call "park" to establish WebRTC connection
           verto.makeCall({ destination: 'park' });
         },
-        onCallState: (state: string) => {
+        onCallState: async (state: string) => {
           console.log('Call state changed:', state);
           switch (state) {
             case 'trying':
               setCallState(prev => ({ ...prev, status: 'calling' }));
               break;
             case 'active':
-              setCallState(prev => ({ 
-                ...prev, 
-                status: 'answered',
-                startTime: new Date()
-              }));
+              // Park call is now active, create outbound call
+              if (!parkCallReady) {
+                parkCallReady = true;
+                console.log('Park call active, creating outbound call');
+                
+                try {
+                  const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
+                  const { data: callData, error } = await supabase.functions.invoke('telnect-create-call', {
+                    body: {
+                      caller: '+46775893847',
+                      number: phoneNumber.trim(),
+                      notifyUrl: `${baseUrl}/call-events`
+                    }
+                  });
+
+                  if (error) throw error;
+                  
+                  outboundCallId = callData.id;
+                  console.log('Outbound call created:', callData.id);
+                  
+                  setCallState(prev => ({ 
+                    ...prev, 
+                    callId: callData.id,
+                    status: 'calling'
+                  }));
+                } catch (error) {
+                  console.error('Error creating outbound call:', error);
+                  throw error;
+                }
+              } else {
+                // Both calls are active, ready for bridging
+                setCallState(prev => ({ 
+                  ...prev, 
+                  status: 'answered',
+                  startTime: new Date()
+                }));
+              }
               break;
             case 'destroy':
               setCallState({ status: 'hangup' });
@@ -112,24 +147,6 @@ export function PhoneInterface() {
           }
         }
       });
-
-      // Create outbound call
-      const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
-      const { data: callData, error } = await supabase.functions.invoke('telnect-create-call', {
-        body: {
-          caller: '+46775893847', // This should be configurable
-          number: phoneNumber.trim(),
-          notifyUrl: `${baseUrl}/call-events`
-        }
-      });
-
-      if (error) throw error;
-      
-      setCallState(prev => ({ 
-        ...prev, 
-        callId: callData.id,
-        status: 'calling'
-      }));
 
     } catch (error: any) {
       console.error('Error making call:', error);
