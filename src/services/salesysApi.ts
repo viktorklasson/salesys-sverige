@@ -362,6 +362,29 @@ class SalesysApi {
 
       if (response.error) {
         console.error('Edge function error:', response.error);
+        
+        // Check if it's a 401 unauthorized error
+        if (response.error.message?.includes('401') || 
+            response.error.message?.includes('unauthorized') ||
+            response.error.message?.includes('non-2xx status code')) {
+          console.log('Detected 401 unauthorized - clearing auth and redirecting to login');
+          
+          // Clear authentication data
+          this.bearerToken = null;
+          localStorage.removeItem('salesys_bearer_token');
+          
+          // Clear auth cookies using document.cookie
+          const cookies = ['s2_utoken', 's2_uid', 's2_uname'];
+          cookies.forEach(cookieName => {
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          });
+          
+          // Redirect to login page
+          window.location.href = '/login';
+          return;
+        }
+        
         console.log('=== SalesysApi.apiCall() END - ERROR ===');
         throw new Error(`API fel: ${response.error.message}`);
       }
