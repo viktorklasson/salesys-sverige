@@ -163,7 +163,7 @@ export function PhoneInterface() {
                         actions: [
                           {
                             action: "bridge",
-                            target: phoneLineData.username // Bridge to the park call
+                            destination: phoneLineData.username + "@" + phoneLineData.domain
                           }
                         ]
                       }
