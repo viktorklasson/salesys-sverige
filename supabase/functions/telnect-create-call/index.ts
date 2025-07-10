@@ -14,9 +14,33 @@ serve(async (req) => {
     const { caller, number, notifyUrl } = await req.json()
     const telnectToken = Deno.env.get('TELNECT_API_TOKEN')
     
+    console.log('Request body:', { caller, number, notifyUrl })
+    console.log('Telnect token exists:', !!telnectToken)
+    
     if (!telnectToken) {
       throw new Error('TELNECT_API_TOKEN not configured')
     }
+
+    const requestBody = {
+      caller: caller,
+      number: number,
+      dialplan: "E164_plus",
+      timeout: 30,
+      actions: {
+        answered: [
+          {
+            action: "park"
+          }
+        ]
+      },
+      notify: [
+        {
+          url: notifyUrl
+        }
+      ]
+    }
+
+    console.log('Sending to Telnect API:', JSON.stringify(requestBody, null, 2))
 
     const response = await fetch('https://bss.telnect.com/api/v1/Calls', {
       method: 'POST',
@@ -24,28 +48,16 @@ serve(async (req) => {
         'Authorization': `Bearer ${telnectToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        caller: caller,
-        number: number,
-        dialplan: "E164_plus",
-        timeout: 30,
-        actions: {
-          answered: [
-            {
-              action: "park"
-            }
-          ]
-        },
-        notify: [
-          {
-            url: notifyUrl
-          }
-        ]
-      })
+      body: JSON.stringify(requestBody)
     })
 
+    console.log('Telnect API response status:', response.status)
+    console.log('Telnect API response statusText:', response.statusText)
+
     if (!response.ok) {
-      throw new Error(`Telnect API error: ${response.statusText}`)
+      const errorText = await response.text()
+      console.error('Telnect API error response:', errorText)
+      throw new Error(`Telnect API error: ${response.status} ${response.statusText} - ${errorText}`)
     }
 
     const callData = await response.json()
