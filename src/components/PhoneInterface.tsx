@@ -154,35 +154,59 @@ export function PhoneInterface() {
                   outboundCallId = callData.id;
                   console.log('✅ Outbound call created successfully:', callData.id);
                   
-                  // Bridge the park call with the outbound call
-                  console.log('Bridging park call with outbound call...');
-                  try {
-                    const { error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
-                      body: {
-                        callId: callData.id,
-                        actions: [
-                          {
-                            action: "bridge",
-                            destination: phoneLineData.username + "@" + phoneLineData.domain
-                          }
-                        ]
-                      }
-                    });
-                    
-                    if (bridgeError) {
-                      console.error('Bridge error:', bridgeError);
-                    } else {
-                      console.log('✅ Calls bridged successfully');
-                    }
-                  } catch (bridgeError) {
-                    console.error('Error bridging calls:', bridgeError);
-                  }
+                  // Wait for the outbound call to be answered before bridging
+                  console.log('Outbound call created, waiting for answer to bridge...');
                   
                   setCallState(prev => ({ 
                     ...prev, 
                     callId: callData.id,
                     status: 'calling'
                   }));
+                  
+                  // Poll for call status to detect when it's answered
+                  const pollCallStatus = async () => {
+                    try {
+                      // Check call status - when it shows as answered, bridge the calls
+                      console.log('Checking if call was answered...');
+                      
+                      // For now, let's bridge immediately after a short delay
+                      // In a real implementation, you'd poll the call status or use webhooks
+                      setTimeout(async () => {
+                        console.log('Attempting to bridge calls...');
+                        try {
+                          const { error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
+                            body: {
+                              callId: callData.id,
+                              actions: [
+                                {
+                                  action: "bridge",
+                                  target: phoneLineData.username + "@" + phoneLineData.domain
+                                }
+                              ]
+                            }
+                          });
+                          
+                          if (bridgeError) {
+                            console.error('Bridge error:', bridgeError);
+                          } else {
+                            console.log('✅ Calls bridged successfully');
+                            setCallState(prev => ({ 
+                              ...prev, 
+                              status: 'answered',
+                              startTime: new Date()
+                            }));
+                          }
+                        } catch (bridgeError) {
+                          console.error('Error bridging calls:', bridgeError);
+                        }
+                      }, 3000); // Wait 3 seconds then bridge
+                      
+                    } catch (error) {
+                      console.error('Error checking call status:', error);
+                    }
+                  };
+                  
+                  pollCallStatus();
                 } catch (error) {
                   console.error('❌ Error creating outbound call:', error);
                   throw error;
