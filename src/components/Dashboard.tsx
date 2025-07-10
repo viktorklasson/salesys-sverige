@@ -49,6 +49,7 @@ import {
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUtils } from './Authentication';
+import { PhoneInterface } from './PhoneInterface';
 
 interface DashboardProps {
   onStatisticsClick: (statType: 'avtal' | 'samtal' | 'ordrar') => void;
@@ -56,7 +57,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const { toast } = useToast();
-  const [currentView, setCurrentView] = useState<'welcome' | 'navigation' | 'section' | 'dashboard' | 'statistics'>('welcome');
+  const [currentView, setCurrentView] = useState<'welcome' | 'navigation' | 'section' | 'dashboard' | 'statistics' | 'phone'>('welcome');
   const [activeSection, setActiveSection] = useState<'ringlistor' | 'anvandare' | 'team'>('ringlistor');
   const [selectedDashboard, setSelectedDashboard] = useState<any>(null);
   const [selectedStatType, setSelectedStatType] = useState<'avtal' | 'samtal' | 'ordrar' | null>(null);
@@ -878,7 +879,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
 
             <Card 
               className="bg-white border-0 shadow-sm rounded-2xl cursor-pointer hover:shadow-md transition-shadow" 
-              onClick={() => handleStatisticsClick('samtal')}
+              onClick={() => setCurrentView('phone')}
             >
               <CardContent className="p-6 text-center">
                 <Phone className="h-8 w-8 mx-auto mb-3 text-gray-600" />
@@ -903,6 +904,23 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
               </CardContent>
             </Card>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentView === 'phone') {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-light text-gray-800">Samtal</h1>
+            <Button variant="outline" onClick={handleBackToWelcome}>
+              Tillbaka till översikt
+            </Button>
+          </div>
+          
+          <PhoneInterface />
         </div>
       </div>
     );
