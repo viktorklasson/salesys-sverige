@@ -77,6 +77,24 @@ export function PhoneInterface() {
         phoneNumber: phoneNumber.trim()
       });
 
+      // Request microphone access first
+      console.log('Requesting microphone access...');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('Microphone access granted');
+        // Stop the stream immediately as Verto will handle it
+        stream.getTracks().forEach(track => track.stop());
+      } catch (micError) {
+        console.error('Microphone access denied:', micError);
+        toast({
+          title: "Mikrofon behövs",
+          description: "Tillåt mikrofonåtkomst för att ringa",
+          variant: "destructive"
+        });
+        setCallState({ status: 'idle' });
+        return;
+      }
+
       // Create phone line if not exists
       let phoneLineData = phoneLine;
       if (!phoneLineData) {
@@ -87,29 +105,39 @@ export function PhoneInterface() {
       let outboundCallId: string | null = null;
 
       // Initialize Verto
+      console.log('Initializing Verto with:', {
+        login: phoneLineData.username,
+        domain: phoneLineData.domain,
+        websocket: phoneLineData.websocket_url
+      });
+
       await verto.initialize({
         login: phoneLineData.username,
         passwd: phoneLineData.password,
         socketUrl: phoneLineData.websocket_url,
         onConnected: () => {
-          console.log('Verto connected, making call to park');
+          console.log('Verto connected successfully, making call to park');
           // Call "park" to establish WebRTC connection
-          verto.makeCall({ destination: 'park' });
+          const parkCall = verto.makeCall({ destination: 'park' });
+          console.log('Park call initiated:', parkCall);
         },
         onCallState: async (state: string) => {
-          console.log('Call state changed:', state);
+          console.log('Verto call state changed to:', state);
           switch (state) {
             case 'trying':
+              console.log('Park call is trying...');
               setCallState(prev => ({ ...prev, status: 'calling' }));
               break;
             case 'active':
+              console.log('Call state active - parkCallReady:', parkCallReady);
               // Park call is now active, create outbound call
               if (!parkCallReady) {
                 parkCallReady = true;
-                console.log('Park call active, creating outbound call');
+                console.log('Park call is active, now creating outbound call to:', phoneNumber.trim());
                 
                 try {
                   const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
+                  console.log('Making request to create outbound call...');
                   const { data: callData, error } = await supabase.functions.invoke('telnect-create-call', {
                     body: {
                       caller: '+46775893847',
@@ -118,10 +146,13 @@ export function PhoneInterface() {
                     }
                   });
 
-                  if (error) throw error;
+                  if (error) {
+                    console.error('Error from telnect-create-call:', error);
+                    throw error;
+                  }
                   
                   outboundCallId = callData.id;
-                  console.log('Outbound call created:', callData.id);
+                  console.log('✅ Outbound call created successfully:', callData.id);
                   
                   setCallState(prev => ({ 
                     ...prev, 
@@ -129,11 +160,12 @@ export function PhoneInterface() {
                     status: 'calling'
                   }));
                 } catch (error) {
-                  console.error('Error creating outbound call:', error);
+                  console.error('❌ Error creating outbound call:', error);
                   throw error;
                 }
               } else {
                 // Both calls are active, ready for bridging
+                console.log('Both calls are now active - call answered');
                 setCallState(prev => ({ 
                   ...prev, 
                   status: 'answered',
@@ -142,17 +174,20 @@ export function PhoneInterface() {
               }
               break;
             case 'destroy':
+              console.log('Call destroyed');
               setCallState({ status: 'hangup' });
               break;
+            default:
+              console.log('Unknown call state:', state);
           }
         }
       });
 
     } catch (error: any) {
-      console.error('Error making call:', error);
+      console.error('❌ Error in makeCall:', error);
       toast({
         title: "Fel",
-        description: "Kunde inte ringa upp",
+        description: "Kunde inte ringa upp: " + error.message,
         variant: "destructive"
       });
       setCallState({ status: 'idle' });
