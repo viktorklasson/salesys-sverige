@@ -154,6 +154,30 @@ export function PhoneInterface() {
                   outboundCallId = callData.id;
                   console.log('✅ Outbound call created successfully:', callData.id);
                   
+                  // Bridge the park call with the outbound call
+                  console.log('Bridging park call with outbound call...');
+                  try {
+                    const { error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
+                      body: {
+                        callId: callData.id,
+                        actions: [
+                          {
+                            action: "bridge",
+                            target: phoneLineData.username // Bridge to the park call
+                          }
+                        ]
+                      }
+                    });
+                    
+                    if (bridgeError) {
+                      console.error('Bridge error:', bridgeError);
+                    } else {
+                      console.log('✅ Calls bridged successfully');
+                    }
+                  } catch (bridgeError) {
+                    console.error('Error bridging calls:', bridgeError);
+                  }
+                  
                   setCallState(prev => ({ 
                     ...prev, 
                     callId: callData.id,
