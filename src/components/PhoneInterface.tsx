@@ -117,7 +117,7 @@ export function PhoneInterface() {
       const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
       const { data: callData, error } = await supabase.functions.invoke('telnect-create-call', {
         body: {
-          caller: '+46101000555', // This should be configurable
+          caller: '+46775893847', // This should be configurable
           number: phoneNumber.trim(),
           notifyUrl: `${baseUrl}/call-events`
         }
