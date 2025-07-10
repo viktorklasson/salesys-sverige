@@ -20,11 +20,7 @@ serve(async (req) => {
       throw new Error('TELNECT_API_TOKEN not configured')
     }
 
-    const requestBody = {
-      actions: actions
-    }
-
-    console.log('Sending to Telnect API:', JSON.stringify(requestBody, null, 2))
+    console.log('Sending actions to Telnect API:', JSON.stringify(actions, null, 2))
 
     const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}/actions`, {
       method: 'POST',
