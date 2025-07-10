@@ -180,7 +180,7 @@ export function PhoneInterface() {
                               actions: [
                                 {
                                   action: "bridge",
-                                  target: phoneLineData.username + "@" + phoneLineData.domain
+                                  destination: phoneLineData.username
                                 }
                               ]
                             }
