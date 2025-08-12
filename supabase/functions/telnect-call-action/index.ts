@@ -35,16 +35,17 @@ serve(async (req) => {
       throw new Error('action is required');
     }
 
-    // Build request body according to API docs
-    const requestBody: any = { action };
+    // Build request body according to corrected API docs
+    const actionObj: any = { action };
     if (destination) {
-      requestBody.destination = destination;
+      actionObj.destination = destination;
     }
     
+    const requestBody = { actions: [actionObj] };
     console.log('Final request body for Telnect API:', JSON.stringify(requestBody, null, 2));
 
-    // CORRECTED: Added /actions back to match API docs
-    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}/actions`, {
+    // CORRECTED: Use endpoint without /actions as per corrected API docs
+    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${telnectToken}`,
