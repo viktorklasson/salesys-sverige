@@ -19,360 +19,384 @@ interface PhoneLineData {
 interface CallState {
   status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
   callId?: string;
+  vertoCallId?: string;
+  outboundCallId?: string;
   startTime?: Date;
   phoneNumber?: string;
 }
 
-export function PhoneInterface() {
+export const PhoneInterface: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [phoneLine, setPhoneLine] = useState<PhoneLineData | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [phoneLineData, setPhoneLineData] = useState<PhoneLineData | null>(null);
   const [callState, setCallState] = useState<CallState>({ status: 'idle' });
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const statusPollingRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  const verto = useVerto();
+  
+  const { verto, connect, disconnect, call, hangup } = useVerto();
+
+  // Create phone line when component mounts
+  useEffect(() => {
+    createPhoneLine();
+  }, []);
 
   const createPhoneLine = async () => {
     try {
       setIsLoading(true);
-      
-      // Use Supabase function URL directly for callbacks
-      const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
-      const eventCallbackUrl = `${baseUrl}/phone-events`;
+      console.log('Creating phone line...');
       
       const { data, error } = await supabase.functions.invoke('telnect-create-phone', {
-        body: { eventCallbackUrl }
+        body: {
+          allow_features: ['inbound', 'outbound', 'websocket'],
+          type: 'dynamic',
+          max_expire: 86400
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating phone line:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create phone line",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Phone line created:', data);
+      setPhoneLineData(data);
       
-      setPhoneLine(data);
-      return data;
-    } catch (error: any) {
+      // Connect to Verto WebRTC
+      await connectToVerto(data);
+      
+    } catch (error) {
       console.error('Error creating phone line:', error);
       toast({
-        title: "Fel",
-        description: "Kunde inte skapa telefonlinje",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to create phone line",
+        variant: "destructive",
       });
-      throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const makeCall = async () => {
-    if (!phoneNumber.trim()) {
+  const connectToVerto = async (phoneData: PhoneLineData) => {
+    try {
+      console.log('Connecting to Verto...');
+      
+      await connect({
+        wsURL: phoneData.websocket_url,
+        login: phoneData.username,
+        passwd: phoneData.password,
+        login_token: '',
+        userVariables: {},
+        ringFile: 'https://s3.amazonaws.com/evolux-files/ringtone/ringtone_us_uk.mp3',
+        loginParams: {},
+        tag: 'phone-interface'
+      });
+
+      setIsConnected(true);
+      console.log('Connected to Verto');
+      
+    } catch (error) {
+      console.error('Error connecting to Verto:', error);
       toast({
-        title: "Fel",
-        description: "Ange ett telefonnummer",
-        variant: "destructive"
+        title: "Error",
+        description: "Failed to connect to WebRTC",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCall = async () => {
+    if (!phoneNumber.trim() || !isConnected) {
+      toast({
+        title: "Error",
+        description: "Please enter a phone number and ensure WebRTC is connected",
+        variant: "destructive",
       });
       return;
     }
 
     try {
-      setCallState({ 
-        status: 'connecting',
-        phoneNumber: phoneNumber.trim()
+      setIsLoading(true);
+      setCallState({ status: 'connecting' });
+
+      // Step 1: Call "park" from Verto to get a call ID
+      console.log('Calling park from Verto...');
+      const vertoCall = await call('park', {
+        caller_id_name: 'WebRTC User',
+        caller_id_number: phoneLineData?.username || '',
+        tag: 'verto-park-call'
       });
 
-      // Request microphone access first
-      console.log('Requesting microphone access...');
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('Microphone access granted');
-        // Stop the stream immediately as Verto will handle it
-        stream.getTracks().forEach(track => track.stop());
-      } catch (micError) {
-        console.error('Microphone access denied:', micError);
-        toast({
-          title: "Mikrofon behövs",
-          description: "Tillåt mikrofonåtkomst för att ringa",
-          variant: "destructive"
-        });
-        setCallState({ status: 'idle' });
-        return;
-      }
+      console.log('Verto call created:', vertoCall);
+      const vertoCallId = vertoCall.callID;
 
-      // Create phone line if not exists
-      let phoneLineData = phoneLine;
-      if (!phoneLineData) {
-        phoneLineData = await createPhoneLine();
-      }
-
-      let parkCallReady = false;
-      let outboundCallId: string | null = null;
-
-      // Initialize Verto
-      console.log('Initializing Verto with:', {
-        login: phoneLineData.username,
-        domain: phoneLineData.domain,
-        websocket: phoneLineData.websocket_url
-      });
-
-      await verto.initialize({
-        login: phoneLineData.username,
-        passwd: phoneLineData.password,
-        socketUrl: phoneLineData.websocket_url,
-        onConnected: () => {
-          console.log('Verto connected successfully, making call to park');
-          // Call "park" to establish WebRTC connection
-          const parkCall = verto.makeCall({ destination: 'park' });
-          console.log('Park call initiated:', parkCall);
-        },
-        onCallState: async (state: string) => {
-          console.log('Verto call state changed to:', state);
-          switch (state) {
-            case 'trying':
-              console.log('Park call is trying...');
-              setCallState(prev => ({ ...prev, status: 'calling' }));
-              break;
-            case 'active':
-              console.log('Call state active - parkCallReady:', parkCallReady);
-              // Park call is now active, create outbound call
-              if (!parkCallReady) {
-                parkCallReady = true;
-                console.log('Park call is active, now creating outbound call to:', phoneNumber.trim());
-                
-                try {
-                  const baseUrl = 'https://wtehqdaixoyqsrnocrbd.supabase.co/functions/v1';
-                  console.log('Making request to create outbound call...');
-                  const { data: callData, error } = await supabase.functions.invoke('telnect-create-call', {
-                    body: {
-                      caller: '+46775893847',
-                      number: phoneNumber.trim(),
-                      notifyUrl: `${baseUrl}/call-events`
-                    }
-                  });
-
-                  if (error) {
-                    console.error('Error from telnect-create-call:', error);
-                    throw error;
-                  }
-                  
-                  outboundCallId = callData.id;
-                  console.log('✅ Outbound call created successfully:', callData.id);
-                  
-                  // Wait for the outbound call to be answered before bridging
-                  console.log('Outbound call created, waiting for answer to bridge...');
-                  
-                  setCallState(prev => ({ 
-                    ...prev, 
-                    callId: callData.id,
-                    status: 'calling'
-                  }));
-                  
-                  // Poll for call status to detect when it's answered
-                  const pollCallStatus = async () => {
-                    try {
-                      // Check call status - when it shows as answered, bridge the calls
-                      console.log('Checking if call was answered...');
-                      
-                      // For now, let's bridge immediately after a short delay
-                      // In a real implementation, you'd poll the call status or use webhooks
-                      setTimeout(async () => {
-                        console.log('Attempting to bridge calls...');
-                        try {
-                          const { error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
-                            body: {
-                              callId: callData.id,
-                              action: "answer"
-                            }
-                          });
-                          
-                          if (bridgeError) {
-                            console.error('Bridge error:', bridgeError);
-                          } else {
-                            console.log('✅ Calls bridged successfully');
-                            setCallState(prev => ({ 
-                              ...prev, 
-                              status: 'answered',
-                              startTime: new Date()
-                            }));
-                          }
-                        } catch (bridgeError) {
-                          console.error('Error bridging calls:', bridgeError);
-                        }
-                      }, 3000); // Wait 3 seconds then bridge
-                      
-                    } catch (error) {
-                      console.error('Error checking call status:', error);
-                    }
-                  };
-                  
-                  pollCallStatus();
-                } catch (error) {
-                  console.error('❌ Error creating outbound call:', error);
-                  throw error;
-                }
-              } else {
-                // Both calls are active, ready for bridging
-                console.log('Both calls are now active - call answered');
-                setCallState(prev => ({ 
-                  ...prev, 
-                  status: 'answered',
-                  startTime: new Date()
-                }));
-              }
-              break;
-            case 'destroy':
-              console.log('Call destroyed');
-              setCallState({ status: 'hangup' });
-              break;
-            default:
-              console.log('Unknown call state:', state);
-          }
+      // Step 2: Create outbound call via API
+      console.log('Creating outbound call...');
+      const { data: outboundCallData, error: outboundError } = await supabase.functions.invoke('telnect-create-call', {
+        body: {
+          caller: phoneLineData?.username || '',
+          number: phoneNumber,
+          notifyUrl: `${window.location.origin}/api/call-events`
         }
       });
 
-    } catch (error: any) {
-      console.error('❌ Error in makeCall:', error);
-      toast({
-        title: "Fel",
-        description: "Kunde inte ringa upp: " + error.message,
-        variant: "destructive"
+      if (outboundError) {
+        console.error('Error creating outbound call:', outboundError);
+        throw new Error('Failed to create outbound call');
+      }
+
+      console.log('Outbound call created:', outboundCallData);
+      const outboundCallId = outboundCallData.data?.id || outboundCallData.id;
+
+      // Step 3: Bridge the two calls together
+      console.log('Bridging calls...');
+      const { data: bridgeData, error: bridgeError } = await supabase.functions.invoke('telnect-bridge-calls', {
+        body: {
+          vertoCallId: vertoCallId,
+          outboundCallId: outboundCallId
+        }
       });
+
+      if (bridgeError) {
+        console.error('Error bridging calls:', bridgeError);
+        throw new Error('Failed to bridge calls');
+      }
+
+      console.log('Calls bridged successfully:', bridgeData);
+
+      // Update call state
+      setCallState({
+        status: 'calling',
+        vertoCallId: vertoCallId,
+        outboundCallId: outboundCallId,
+        phoneNumber: phoneNumber
+      });
+
+      // Start polling for call status
+      startCallStatusPolling(outboundCallId);
+
+      toast({
+        title: "Success",
+        description: "Call initiated successfully",
+      });
+
+    } catch (error) {
+      console.error('Error making call:', error);
       setCallState({ status: 'idle' });
+      toast({
+        title: "Error",
+        description: error.message || "Failed to make call",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const hangUpCall = async () => {
-    try {
-      verto.hangUp();
+  const startCallStatusPolling = (callId: string) => {
+    // Clear any existing polling
+    if (statusPollingRef.current) {
+      clearInterval(statusPollingRef.current);
+    }
 
-      if (callState.callId) {
+    statusPollingRef.current = setInterval(async () => {
+      try {
+        const { data: callInfo, error } = await supabase.functions.invoke('telnect-get-call', {
+          body: { callId: callId }
+        });
+
+        if (error) {
+          console.error('Error polling call status:', error);
+          return;
+        }
+
+        console.log('Call status:', callInfo.status);
+        
+        if (callInfo.status === 'answered') {
+          setCallState(prev => ({ 
+            ...prev, 
+            status: 'answered',
+            startTime: new Date()
+          }));
+          stopCallStatusPolling();
+        } else if (['hangup', 'failed', 'completed'].includes(callInfo.status)) {
+          setCallState(prev => ({ 
+            ...prev, 
+            status: 'hangup'
+          }));
+          stopCallStatusPolling();
+        }
+      } catch (error) {
+        console.error('Error polling call status:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+  };
+
+  const stopCallStatusPolling = () => {
+    if (statusPollingRef.current) {
+      clearInterval(statusPollingRef.current);
+      statusPollingRef.current = null;
+    }
+  };
+
+  const handleHangup = async () => {
+    try {
+      if (callState.vertoCallId) {
+        await hangup(callState.vertoCallId);
+      }
+      
+      if (callState.outboundCallId) {
         await supabase.functions.invoke('telnect-call-action', {
           body: {
-            callId: callState.callId,
+            callId: callState.outboundCallId,
             action: 'hangup'
           }
         });
       }
 
       setCallState({ status: 'idle' });
+      stopCallStatusPolling();
+      
+      toast({
+        title: "Call ended",
+        description: "Call has been terminated",
+      });
     } catch (error) {
       console.error('Error hanging up:', error);
     }
   };
 
-  // Listen for call hangup events
-  useEffect(() => {
-    const channel = supabase.channel('call-events')
-      .on('broadcast', { event: 'call-hangup' }, (payload: any) => {
-        console.log('Received hangup event:', payload);
-        if (payload.payload.callId === callState.callId) {
-          console.log('Other party hung up');
-          setCallState(prev => ({ ...prev, status: 'other_hangup' }));
-          // Auto-cleanup after 3 seconds
-          setTimeout(() => {
-            setCallState({ status: 'idle' });
-            verto.hangUp();
-          }, 3000);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [callState.callId]);
+  const handleDisconnect = async () => {
+    try {
+      await disconnect();
+      setIsConnected(false);
+      setPhoneLineData(null);
+      setCallState({ status: 'idle' });
+      stopCallStatusPolling();
+      
+      toast({
+        title: "Disconnected",
+        description: "WebRTC connection closed",
+      });
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+    }
+  };
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      verto.destroy();
+      stopCallStatusPolling();
+      if (isConnected) {
+        disconnect();
+      }
     };
-  }, [verto]);
-
-  // Show fullscreen call interface when in call
-  if (callState.status !== 'idle' && !isMinimized) {
-    return (
-      <CallInterface
-        callState={callState}
-        onHangUp={hangUpCall}
-        onMinimize={() => setIsMinimized(true)}
-      />
-    );
-  }
+  }, []);
 
   return (
     <div className="space-y-4">
-      {/* Minimized call indicator */}
-      {callState.status !== 'idle' && isMinimized && (
-        <Card className="p-4 bg-primary/10 border-primary/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">
-                {callState.status === 'calling' ? 'Ringer...' : 'Pågående samtal'}
-              </span>
-              {callState.phoneNumber && (
-                <span className="text-sm text-muted-foreground">
-                  {callState.phoneNumber}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsMinimized(false)}
-              >
-                Visa
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={hangUpCall}
-              >
-                <PhoneOff className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Phone interface */}
       <Card className="p-6">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Phone className="h-5 w-5" />
-            <h3 className="text-lg font-semibold">Samtal</h3>
-          </div>
-
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex flex-col items-center gap-3">
-                <Radio className="h-8 w-8 animate-pulse text-primary" />
-                <p className="text-sm text-muted-foreground">Kopplar upp dig...</p>
-              </div>
-            </div>
-          )}
-
-          {!isLoading && (
-            <div className="space-y-4">
-              <Input
-                type="tel"
-                placeholder="Telefonnummer (t.ex. +46701234567)"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="text-lg"
-              />
-              
-              <Button 
-                onClick={makeCall}
-                className="w-full"
-                size="lg"
-                disabled={!phoneNumber.trim() || callState.status !== 'idle'}
-              >
-                <PhoneCall className="h-5 w-5 mr-2" />
-                Ring
-              </Button>
-            </div>
-          )}
+        <div className="flex items-center space-x-2 mb-4">
+          <Phone className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Phone Interface</h2>
         </div>
+
+        {/* Connection Status */}
+        <div className="mb-4">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm">
+              {isConnected ? 'WebRTC Connected' : 'WebRTC Disconnected'}
+            </span>
+          </div>
+        </div>
+
+        {/* Phone Number Input */}
+        <div className="mb-4">
+          <Input
+            type="tel"
+            placeholder="Enter phone number (e.g., +46701234567)"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            disabled={!isConnected || callState.status !== 'idle'}
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-2">
+          {callState.status === 'idle' ? (
+            <Button
+              onClick={handleCall}
+              disabled={!isConnected || !phoneNumber.trim() || isLoading}
+              className="flex-1"
+            >
+              {isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Connecting...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <PhoneCall className="h-4 w-4" />
+                  <span>Call</span>
+                </div>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleHangup}
+              variant="destructive"
+              className="flex-1"
+            >
+              <div className="flex items-center space-x-2">
+                <PhoneOff className="h-4 w-4" />
+                <span>Hang Up</span>
+              </div>
+            </Button>
+          )}
+
+          <Button
+            onClick={handleDisconnect}
+            variant="outline"
+            disabled={!isConnected}
+          >
+            <Radio className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Call Status */}
+        {callState.status !== 'idle' && (
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <div className="text-sm text-gray-600">
+              Status: <span className="font-medium">{callState.status}</span>
+            </div>
+            {callState.phoneNumber && (
+              <div className="text-sm text-gray-600">
+                Number: <span className="font-medium">{callState.phoneNumber}</span>
+              </div>
+            )}
+            {callState.startTime && (
+              <div className="text-sm text-gray-600">
+                Started: <span className="font-medium">{callState.startTime.toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
+
+             {/* Call Interface */}
+       {callState.status === 'answered' && (
+         <CallInterface
+           callState={callState}
+           onHangUp={handleHangup}
+           onMinimize={() => setCallState(prev => ({ ...prev, status: 'idle' }))}
+         />
+       )}
     </div>
   );
-}
+};

@@ -11,47 +11,45 @@ serve(async (req) => {
   }
 
   try {
-    const { caller, number, notifyUrl } = await req.json()
+    const { vertoCallId, outboundCallId } = await req.json()
     const telnectToken = Deno.env.get('TELNECT_API_TOKEN')
     
-    console.log('Request body:', { caller, number, notifyUrl })
+    console.log('Bridge request:', { vertoCallId, outboundCallId })
     console.log('Telnect token exists:', !!telnectToken)
     
     if (!telnectToken) {
       throw new Error('TELNECT_API_TOKEN not configured')
     }
 
-    // Create outbound call to the destination number
-    const response = await fetch('https://bss.telnect.com/api/v1/Calls', {
+    if (!vertoCallId || !outboundCallId) {
+      throw new Error('Both vertoCallId and outboundCallId are required')
+    }
+
+    // Bridge the two calls together
+    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${vertoCallId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${telnectToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        source: {
-          type: "phone",
-          number: caller
-        },
-        destination: {
-          type: "phone", 
-          number: number
-        },
-        options: {
-          record: false,
-          timeout: 30
-        }
+        actions: [
+          {
+            action: "bridge",
+            destination: outboundCallId
+          }
+        ]
       })
     })
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Telnect API error:', response.status, errorText)
-      throw new Error(`Telnect API error: ${response.status} - ${errorText}`)
+      console.error('Telnect bridge API error:', response.status, errorText)
+      throw new Error(`Telnect bridge API error: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json()
-    console.log('Telnect API response:', result)
+    console.log('Telnect bridge API response:', result)
 
     return new Response(
       JSON.stringify({ success: true, data: result }),
@@ -62,7 +60,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Function error:', error)
+    console.error('Bridge function error:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 

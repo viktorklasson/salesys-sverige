@@ -1,22 +1,27 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 
 interface VertoConfig {
+  wsURL: string;
   login: string;
   passwd: string;
-  socketUrl: string;
-  onConnected?: () => void;
-  onDisconnected?: () => void;
-  onCallState?: (state: string) => void;
+  login_token: string;
+  userVariables: any;
+  ringFile: string;
+  loginParams: any;
+  tag: string;
 }
 
 interface VertoCall {
   destination: string;
-  callerId?: string;
+  caller_id_name?: string;
+  caller_id_number?: string;
+  tag?: string;
 }
 
 export function useVerto() {
   const vertoRef = useRef<any>(null);
   const isLoadedRef = useRef(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   const loadVertoScript = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
@@ -45,7 +50,7 @@ export function useVerto() {
     });
   }, []);
 
-  const initialize = useCallback(async (config: VertoConfig) => {
+  const connect = useCallback(async (config: VertoConfig) => {
     try {
       await loadVertoScript();
       
@@ -53,20 +58,19 @@ export function useVerto() {
       const verto = new window.Verto({
         login: config.login,
         passwd: config.passwd,
-        socketUrl: config.socketUrl,
-        tag: 'verto-phone-container',
-        ringFile: null,
+        socketUrl: config.wsURL,
+        tag: config.tag,
+        ringFile: config.ringFile,
         onWSConnect: () => {
           console.log('Verto WebSocket connected');
-          config.onConnected?.();
+          setIsConnected(true);
         },
         onWSClose: () => {
           console.log('Verto WebSocket closed');
-          config.onDisconnected?.();
+          setIsConnected(false);
         },
         onDialogState: (dialog: any) => {
           console.log('Verto dialog state:', dialog.state);
-          config.onCallState?.(dialog.state.name);
         },
         onmessage: (verto: any, dialog: any, msg: any, data: any) => {
           console.log('Verto message:', msg, data);
@@ -76,26 +80,41 @@ export function useVerto() {
       vertoRef.current = verto;
       return verto;
     } catch (error) {
-      console.error('Error initializing Verto:', error);
+      console.error('Error connecting to Verto:', error);
       throw error;
     }
   }, [loadVertoScript]);
 
-  const makeCall = useCallback((call: VertoCall) => {
+  const disconnect = useCallback(() => {
+    if (vertoRef.current) {
+      vertoRef.current.logout();
+      vertoRef.current = null;
+      setIsConnected(false);
+    }
+  }, []);
+
+  const call = useCallback((destination: string, options: any = {}) => {
     if (!vertoRef.current) {
-      throw new Error('Verto not initialized');
+      throw new Error('Verto not connected');
     }
 
     return vertoRef.current.newCall({
-      destination_number: call.destination,
-      caller_id_name: call.callerId || 'WebRTC User',
-      caller_id_number: call.callerId || 'anonymous'
+      destination_number: destination,
+      caller_id_name: options.caller_id_name || 'WebRTC User',
+      caller_id_number: options.caller_id_number || 'anonymous',
+      tag: options.tag || 'default'
     });
   }, []);
 
-  const hangUp = useCallback(() => {
+  const hangup = useCallback((callId?: string) => {
     if (vertoRef.current) {
-      vertoRef.current.hangup();
+      if (callId) {
+        // Hangup specific call
+        vertoRef.current.hangup(callId);
+      } else {
+        // Hangup current call
+        vertoRef.current.hangup();
+      }
     }
   }, []);
 
@@ -109,15 +128,18 @@ export function useVerto() {
     if (vertoRef.current) {
       vertoRef.current.logout();
       vertoRef.current = null;
+      setIsConnected(false);
     }
   }, []);
 
   return {
-    initialize,
-    makeCall,
-    hangUp,
+    verto: vertoRef.current,
+    connect,
+    disconnect,
+    call,
+    hangup,
     answer,
     destroy,
-    isConnected: !!vertoRef.current
+    isConnected
   };
 }
