@@ -15,10 +15,30 @@ serve(async (req) => {
     console.log('Call event received:', eventData)
     
     // Handle call events here
-    // When a call is answered and parked, we can bridge it with WebRTC
     if (eventData.status === 'answered') {
       console.log('Call answered and parked, ready for bridging:', eventData.id)
       // This is where you would trigger the bridge action in your frontend
+    } else if (eventData.status === 'hangup') {
+      console.log('Call hung up by other party:', eventData.id)
+      // Send real-time notification to frontend about hangup
+      // Using Supabase realtime to notify the frontend
+      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2')
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+      
+      // Send realtime event to notify frontend
+      const channel = supabase.channel('call-events')
+      await channel.send({
+        type: 'broadcast',
+        event: 'call-hangup',
+        payload: {
+          callId: eventData.id,
+          status: 'hangup',
+          timestamp: new Date().toISOString()
+        }
+      })
     }
     
     return new Response(

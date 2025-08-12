@@ -17,7 +17,7 @@ interface PhoneLineData {
 }
 
 interface CallState {
-  status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup';
+  status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
   callId?: string;
   startTime?: Date;
   phoneNumber?: string;
@@ -255,6 +255,28 @@ export function PhoneInterface() {
       console.error('Error hanging up:', error);
     }
   };
+
+  // Listen for call hangup events
+  useEffect(() => {
+    const channel = supabase.channel('call-events')
+      .on('broadcast', { event: 'call-hangup' }, (payload: any) => {
+        console.log('Received hangup event:', payload);
+        if (payload.payload.callId === callState.callId) {
+          console.log('Other party hung up');
+          setCallState(prev => ({ ...prev, status: 'other_hangup' }));
+          // Auto-cleanup after 3 seconds
+          setTimeout(() => {
+            setCallState({ status: 'idle' });
+            verto.hangUp();
+          }, 3000);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [callState.callId]);
 
   // Cleanup on unmount
   useEffect(() => {

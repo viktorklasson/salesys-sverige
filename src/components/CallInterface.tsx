@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { PhoneOff, Minus } from 'lucide-react';
 
 interface CallState {
-  status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup';
+  status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
   callId?: string;
   startTime?: Date;
   phoneNumber?: string;
@@ -50,6 +50,8 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
         return 'Pågående samtal';
       case 'hangup':
         return 'Samtalet avslutat';
+      case 'other_hangup':
+        return 'Personen lade på';
       default:
         return '';
     }
@@ -65,6 +67,8 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
         return 'text-green-400';
       case 'hangup':
         return 'text-red-400';
+      case 'other_hangup':
+        return 'text-orange-400';
       default:
         return 'text-muted-foreground';
     }
