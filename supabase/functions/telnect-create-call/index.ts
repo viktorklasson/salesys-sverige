@@ -71,19 +71,20 @@ serve(async (req) => {
 
     // Create outbound call to the destination number
     const requestBody = {
-      source: {
-        type: "phone",
-        number: formattedCaller
-      },
-      destination: {
-        type: "phone", 
-        number: formattedNumber
-      },
-      options: {
-        record: false,
-        timeout: 30
-      }
+      caller: formattedCaller,
+      number: formattedNumber,
+      dialplan: "E164_plus",
+      timeout: 30
     };
+
+    // Add notify URL if provided
+    if (notifyUrl) {
+      requestBody.notify = [
+        {
+          url: notifyUrl
+        }
+      ];
+    }
 
     console.log('Telnect API request body:', JSON.stringify(requestBody, null, 2));
 
