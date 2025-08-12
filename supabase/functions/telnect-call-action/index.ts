@@ -6,80 +6,170 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('=== TELNECT CALL ACTION FUNCTION START ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response('ok', {
       headers: corsHeaders
     });
   }
 
   try {
+    console.log('=== PARSING REQUEST BODY ===');
     const requestData = await req.json();
     console.log('Raw request data:', JSON.stringify(requestData, null, 2));
+    console.log('Request data type:', typeof requestData);
+    console.log('Request data keys:', Object.keys(requestData));
     
     const { callId, action, destination } = requestData;
-    const telnectToken = Deno.env.get('TELNECT_API_TOKEN');
+    console.log('=== EXTRACTED PARAMETERS ===');
+    console.log('Extracted callId:', callId, '(type:', typeof callId, ')');
+    console.log('Extracted action:', action, '(type:', typeof action, ')');
+    console.log('Extracted destination:', destination, '(type:', typeof destination, ')');
 
-    console.log('Extracted callId:', callId);
-    console.log('Extracted action:', action);
-    console.log('Extracted destination:', destination);
+    console.log('=== ENVIRONMENT CHECK ===');
+    const telnectToken = Deno.env.get('TELNECT_API_TOKEN');
+    console.log('TELNECT_API_TOKEN exists:', !!telnectToken);
+    console.log('TELNECT_API_TOKEN length:', telnectToken?.length || 0);
+    console.log('TELNECT_API_TOKEN prefix:', telnectToken?.substring(0, 10) + '...' || 'N/A');
 
     if (!telnectToken) {
+      console.error('ERROR: TELNECT_API_TOKEN not configured');
       throw new Error('TELNECT_API_TOKEN not configured');
     }
 
+    console.log('=== PARAMETER VALIDATION ===');
     if (!callId) {
+      console.error('ERROR: callId is required but missing');
+      console.log('callId value:', callId);
       throw new Error('callId is required');
     }
 
     if (!action) {
+      console.error('ERROR: action is required but missing');
+      console.log('action value:', action);
       throw new Error('action is required');
     }
 
+    console.log('=== BUILDING REQUEST BODY ===');
     // Build request body according to corrected API docs
     const actionObj: any = { action };
+    console.log('Initial action object:', JSON.stringify(actionObj, null, 2));
+    
     if (destination) {
       actionObj.destination = destination;
+      console.log('Added destination to action object:', JSON.stringify(actionObj, null, 2));
     }
     
     const requestBody = { actions: [actionObj] };
     console.log('Final request body for Telnect API:', JSON.stringify(requestBody, null, 2));
+    console.log('Request body string length:', JSON.stringify(requestBody).length);
 
-    // CORRECTED: Use endpoint without /actions as per corrected API docs
-    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${telnectToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
+    console.log('=== PREPARING API CALL ===');
+    const apiUrl = `https://bss.telnect.com/api/v1/Calls/${callId}`;
+    console.log('API URL:', apiUrl);
+    console.log('API Method: POST');
+    
+    const headers = {
+      'Authorization': `Bearer ${telnectToken}`,
+      'Content-Type': 'application/json'
+    };
+    console.log('Request headers (without token):', {
+      'Authorization': `Bearer ${telnectToken?.substring(0, 20)}...`,
+      'Content-Type': 'application/json'
     });
 
+    console.log('=== MAKING API CALL ===');
+    const requestBodyString = JSON.stringify(requestBody);
+    console.log('Sending request body string:', requestBodyString);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: requestBodyString
+    });
+
+    console.log('=== API RESPONSE RECEIVED ===');
     console.log('Telnect API response status:', response.status);
     console.log('Telnect API response statusText:', response.statusText);
+    console.log('Telnect API response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Telnect API response ok:', response.ok);
+    console.log('Telnect API response type:', response.type);
+    console.log('Telnect API response url:', response.url);
 
     if (!response.ok) {
+      console.log('=== API ERROR RESPONSE ===');
       const errorText = await response.text();
-      console.error('Telnect API error response:', errorText);
-      throw new Error(`Telnect API error: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error('Telnect API error response body:', errorText);
+      console.error('Error response length:', errorText.length);
+      
+      // Try to parse error as JSON for more details
+      try {
+        const errorJson = JSON.parse(errorText);
+        console.error('Parsed error JSON:', JSON.stringify(errorJson, null, 2));
+      } catch (parseError) {
+        console.error('Could not parse error response as JSON:', parseError.message);
+      }
+      
+      const errorMessage = `Telnect API error: ${response.status} ${response.statusText} - ${errorText}`;
+      console.error('Final error message:', errorMessage);
+      throw new Error(errorMessage);
     }
 
-    const result = await response.json();
-    return new Response(JSON.stringify(result), {
+    console.log('=== SUCCESS RESPONSE ===');
+    const responseText = await response.text();
+    console.log('Raw response text:', responseText);
+    console.log('Response text length:', responseText.length);
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+      console.log('Parsed response JSON:', JSON.stringify(result, null, 2));
+    } catch (parseError) {
+      console.error('Could not parse success response as JSON:', parseError.message);
+      console.log('Returning raw text as result');
+      result = { raw_response: responseText };
+    }
+
+    console.log('=== RETURNING SUCCESS ===');
+    const successResponse = JSON.stringify(result);
+    console.log('Final success response:', successResponse);
+    
+    return new Response(successResponse, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json'
       }
     });
+    
   } catch (error) {
-    console.error('Error executing call action:', error);
-    return new Response(JSON.stringify({
-      error: error.message
-    }), {
+    console.log('=== EXCEPTION CAUGHT ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error object:', error);
+    
+    const errorResponse = {
+      error: error.message,
+      error_type: error.constructor.name,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('=== RETURNING ERROR RESPONSE ===');
+    console.log('Error response object:', JSON.stringify(errorResponse, null, 2));
+    
+    return new Response(JSON.stringify(errorResponse), {
       status: 500,
       headers: {
         ...corsHeaders,
         'Content-Type': 'application/json'
       }
     });
+  } finally {
+    console.log('=== TELNECT CALL ACTION FUNCTION END ===');
   }
 });
