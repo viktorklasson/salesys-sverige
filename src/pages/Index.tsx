@@ -2,6 +2,7 @@
 import React from 'react';
 import { AuthForm, useAuth } from '@/components/Authentication';
 import Dashboard from '@/components/Dashboard';
+import { AudioIndicator } from '@/components/AudioIndicator';
 
 const Index = () => {
   const { isAuthenticated, isCheckingAuth, handleAuthenticated } = useAuth();
@@ -26,7 +27,12 @@ const Index = () => {
     return <AuthForm onAuthenticated={handleAuthenticated} />;
   }
 
-  return <Dashboard onStatisticsClick={handleStatisticsClick} />;
+  return (
+    <>
+      <Dashboard onStatisticsClick={handleStatisticsClick} />
+      <AudioIndicator />
+    </>
+  );
 };
 
 export default Index;
