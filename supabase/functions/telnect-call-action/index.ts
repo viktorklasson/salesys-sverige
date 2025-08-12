@@ -55,24 +55,9 @@ serve(async (req) => {
       throw new Error('action is required');
     }
 
-    console.log('=== BUILDING REQUEST BODY ===');
-    // Build request body according to corrected API docs
-    const actionObj: any = { action };
-    console.log('Initial action object:', JSON.stringify(actionObj, null, 2));
-    
-    if (destination) {
-      actionObj.destination = destination;
-      console.log('Added destination to action object:', JSON.stringify(actionObj, null, 2));
-    }
-    
-    const requestBody = { actions: [actionObj] };
-    console.log('Final request body for Telnect API:', JSON.stringify(requestBody, null, 2));
-    console.log('Request body string length:', JSON.stringify(requestBody).length);
-
     console.log('=== PREPARING API CALL ===');
     const apiUrl = `https://bss.telnect.com/api/v1/Calls/${callId}`;
     console.log('API URL:', apiUrl);
-    console.log('API Method: POST');
     
     const headers = {
       'Authorization': `Bearer ${telnectToken}`,
@@ -83,15 +68,47 @@ serve(async (req) => {
       'Content-Type': 'application/json'
     });
 
-    console.log('=== MAKING API CALL ===');
-    const requestBodyString = JSON.stringify(requestBody);
-    console.log('Sending request body string:', requestBodyString);
+    let response;
     
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers,
-      body: requestBodyString
-    });
+    // Handle hangup action differently - use DELETE endpoint
+    if (action === 'hangup') {
+      console.log('=== HANDLING HANGUP ACTION ===');
+      console.log('Using DELETE method for hangup');
+      
+      response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${telnectToken}`
+        }
+      });
+    } else {
+      // Handle other actions with POST method
+      console.log('=== HANDLING OTHER ACTION ===');
+      console.log('Using POST method for action:', action);
+      
+      // Build request body according to API docs
+      const actionObj: any = { action };
+      console.log('Initial action object:', JSON.stringify(actionObj, null, 2));
+      
+      if (destination) {
+        actionObj.destination = destination;
+        console.log('Added destination to action object:', JSON.stringify(actionObj, null, 2));
+      }
+      
+      const requestBody = { actions: [actionObj] };
+      console.log('Final request body for Telnect API:', JSON.stringify(requestBody, null, 2));
+      console.log('Request body string length:', JSON.stringify(requestBody).length);
+
+      console.log('=== MAKING API CALL ===');
+      const requestBodyString = JSON.stringify(requestBody);
+      console.log('Sending request body string:', requestBodyString);
+      
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: requestBodyString
+      });
+    }
 
     console.log('=== API RESPONSE RECEIVED ===');
     console.log('Telnect API response status:', response.status);
@@ -121,6 +138,18 @@ serve(async (req) => {
     }
 
     console.log('=== SUCCESS RESPONSE ===');
+    
+    // For DELETE requests (hangup), there's usually no response body
+    if (action === 'hangup' && response.status === 204) {
+      console.log('Hangup successful - no content response');
+      return new Response(JSON.stringify({ success: true, message: 'Call hung up successfully' }), {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+    
     const responseText = await response.text();
     console.log('Raw response text:', responseText);
     console.log('Response text length:', responseText.length);
