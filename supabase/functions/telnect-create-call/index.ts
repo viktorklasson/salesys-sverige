@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Fixed caller number for all outgoing calls
+const FIXED_CALLER_NUMBER = '+46752751354';
+
 // Helper function to format phone number
 function formatPhoneNumber(number: string): string {
   // Remove all non-digit characters except +
@@ -46,24 +49,18 @@ serve(async (req) => {
       throw new Error('TELNECT_API_TOKEN not configured')
     }
 
-    // Validate and format phone numbers
-    if (!caller || !number) {
-      throw new Error('Both caller and number are required')
+    // Validate destination number
+    if (!number) {
+      throw new Error('Destination number is required')
     }
 
-    const formattedCaller = formatPhoneNumber(caller);
     const formattedNumber = formatPhoneNumber(number);
 
-    console.log('Formatted phone numbers:', { 
-      originalCaller: caller, 
-      formattedCaller,
+    console.log('Phone number details:', { 
       originalNumber: number, 
-      formattedNumber 
+      formattedNumber,
+      fixedCaller: FIXED_CALLER_NUMBER
     });
-
-    if (!validatePhoneNumber(formattedCaller)) {
-      throw new Error(`Invalid caller phone number: ${caller}`)
-    }
 
     if (!validatePhoneNumber(formattedNumber)) {
       throw new Error(`Invalid destination phone number: ${number}`)
@@ -71,7 +68,7 @@ serve(async (req) => {
 
     // Create outbound call to the destination number
     const requestBody = {
-      caller: formattedCaller,
+      caller: FIXED_CALLER_NUMBER,
       number: formattedNumber,
       dialplan: "E164_plus",
       timeout: 30
