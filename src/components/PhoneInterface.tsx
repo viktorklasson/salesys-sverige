@@ -177,11 +177,7 @@ export function PhoneInterface() {
                           const { error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
                             body: {
                               callId: callData.id,
-                              actions: [
-                                {
-                                  action: "answer"
-                                }
-                              ]
+                              action: "answer"
                             }
                           });
                           
@@ -249,7 +245,7 @@ export function PhoneInterface() {
         await supabase.functions.invoke('telnect-call-action', {
           body: {
             callId: callState.callId,
-            actions: [{ action: 'hangup' }]
+            action: 'hangup'
           }
         });
       }

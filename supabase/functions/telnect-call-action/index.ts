@@ -16,13 +16,12 @@ serve(async (req) => {
     const requestData = await req.json();
     console.log('Raw request data:', JSON.stringify(requestData, null, 2));
     
-    const { callId, actions } = requestData;
+    const { callId, action, destination } = requestData;
     const telnectToken = Deno.env.get('TELNECT_API_TOKEN');
 
     console.log('Extracted callId:', callId);
-    console.log('Extracted actions:', JSON.stringify(actions, null, 2));
-    console.log('Actions type:', typeof actions);
-    console.log('Actions is array:', Array.isArray(actions));
+    console.log('Extracted action:', action);
+    console.log('Extracted destination:', destination);
 
     if (!telnectToken) {
       throw new Error('TELNECT_API_TOKEN not configured');
@@ -32,17 +31,20 @@ serve(async (req) => {
       throw new Error('callId is required');
     }
 
-    if (!actions || !Array.isArray(actions)) {
-      throw new Error('actions must be an array');
+    if (!action) {
+      throw new Error('action is required');
     }
 
-    // Wrap actions in the expected format
-    const requestBody = { actions };
+    // Build request body according to API docs
+    const requestBody: any = { action };
+    if (destination) {
+      requestBody.destination = destination;
+    }
+    
     console.log('Final request body for Telnect API:', JSON.stringify(requestBody, null, 2));
-    console.log('Request body string length:', JSON.stringify(requestBody).length);
 
-    // FIXED: Removed /actions from the endpoint URL
-    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}`, {
+    // CORRECTED: Added /actions back to match API docs
+    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${callId}/actions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${telnectToken}`,
