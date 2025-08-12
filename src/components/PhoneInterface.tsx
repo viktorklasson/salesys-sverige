@@ -179,8 +179,7 @@ export function PhoneInterface() {
                               callId: callData.id,
                               actions: [
                                 {
-                                  action: "transfer",
-                                  destination: "sip:" + phoneLineData.username + "@" + phoneLineData.domain
+                                  action: "answer"
                                 }
                               ]
                             }
