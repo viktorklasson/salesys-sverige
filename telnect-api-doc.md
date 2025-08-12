@@ -145,7 +145,7 @@ This document provides comprehensive documentation for the Telnect API, a teleco
 
 ### 3. Execute Call Action
 
-**Endpoint:** `POST /Calls/{callId}/actions`
+**Endpoint:** `POST /Calls/{callId}`
 
 **Description:** Performs actions on an active call such as transfer, hold, or resume.
 
@@ -155,8 +155,12 @@ This document provides comprehensive documentation for the Telnect API, a teleco
 **Request Body:**
 ```json
 {
-  "action": "transfer",
-  "destination": "+46890510"
+  "actions": [
+    {
+      "action": "transfer",
+      "destination": "+46890510"
+    }
+  ]
 }
 ```
 
