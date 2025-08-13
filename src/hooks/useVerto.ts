@@ -92,6 +92,12 @@ export function useVerto() {
     try {
       await loadScripts();
       
+      // Debug what's available on window
+      console.log('Window jQuery:', typeof (window as any).jQuery);
+      console.log('Window Verto:', typeof (window as any).Verto);
+      console.log('Window object keys containing "verto":', Object.keys(window).filter(key => key.toLowerCase().includes('verto')));
+      console.log('Verto object:', (window as any).Verto);
+      
       // @ts-ignore - Verto is loaded dynamically
       const verto = new window.Verto({
         login: config.login,
