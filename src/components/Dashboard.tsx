@@ -159,6 +159,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onStatisticsClick }) => {
   const aggregateHourlyData = (data: any[]): Array<{ date: string; value: number }> => {
     const hourlyMap = new Map<string, number>();
     
+    // Handle undefined or null data
+    if (!data || !Array.isArray(data)) {
+      const result = [];
+      for (let hour = 0; hour < 24; hour++) {
+        const hourKey = `${hour.toString().padStart(2, '0')}:00`;
+        result.push({
+          date: hourKey,
+          value: 0
+        });
+      }
+      return result;
+    }
+    
     data.forEach(item => {
       const utcDate = new Date(item.intervalStart);
       const stockholmDate = new Date(utcDate.toLocaleString("en-US", { timeZone: "Europe/Stockholm" }));
