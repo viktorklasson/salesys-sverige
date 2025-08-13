@@ -40,7 +40,9 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
   useEffect(() => {
     const audioElements = [
       document.getElementById('main_audio'),
-      document.getElementById('audio_element')
+      document.getElementById('audio_element'),
+      document.getElementById('verto-audio'),
+      document.getElementById('remote-audio')
     ].filter(Boolean) as HTMLAudioElement[];
     
     if (audioElements.length > 0 && selectedOutputDevice) {
@@ -93,25 +95,44 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Hidden Verto container with audio element for output */}
+      {/* Verto audio elements - multiple IDs that Verto library may use */}
       <div id="verto-phone-container" className="hidden">
         <audio 
           id="main_audio" 
           autoPlay 
           playsInline 
-          controls={false} 
+          controls={false}
           style={{ display: 'none' }}
-          onLoadedMetadata={() => console.log('Audio metadata loaded')}
-          onCanPlay={() => console.log('Audio can play')}
-          onPlay={() => console.log('Audio started playing')}
-          onError={(e) => console.error('Audio error:', e)}
+          onLoadedMetadata={() => console.log('Main audio: metadata loaded')}
+          onCanPlay={() => console.log('Main audio: can play')}
+          onPlay={() => console.log('Main audio: started playing')}
+          onVolumeChange={() => console.log('Main audio: volume changed')}
+          onError={(e) => console.error('Main audio error:', e)}
         />
-        {/* Additional audio element that Verto might use */}
         <audio 
           id="audio_element" 
           autoPlay 
           playsInline 
-          controls={false} 
+          controls={false}
+          style={{ display: 'none' }}
+          onLoadedMetadata={() => console.log('Audio element: metadata loaded')}
+          onCanPlay={() => console.log('Audio element: can play')}
+          onPlay={() => console.log('Audio element: started playing')}
+          onError={(e) => console.error('Audio element error:', e)}
+        />
+        {/* Additional Verto-specific audio elements */}
+        <audio 
+          id="verto-audio" 
+          autoPlay 
+          playsInline 
+          controls={false}
+          style={{ display: 'none' }}
+        />
+        <audio 
+          id="remote-audio" 
+          autoPlay 
+          playsInline 
+          controls={false}
           style={{ display: 'none' }}
         />
       </div>

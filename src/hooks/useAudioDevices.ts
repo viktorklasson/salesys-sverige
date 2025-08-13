@@ -69,10 +69,12 @@ export const useAudioDevices = () => {
         }
       }
       
-      // Set it on all audio elements that might be used
+      // Set it on all audio elements that might be used by Verto
       const audioElements = [
         document.getElementById('main_audio'),
         document.getElementById('audio_element'),
+        document.getElementById('verto-audio'),
+        document.getElementById('remote-audio'),
         ...Array.from(document.querySelectorAll('audio'))
       ].filter(Boolean) as HTMLAudioElement[];
       
