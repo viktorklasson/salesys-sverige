@@ -1,4 +1,6 @@
 // Meme: https://www.youtube.com/watch?v=MtN1YnoL46Q
+// Also this classic: https://www.youtube.com/watch?v=ZtYU87QNjPw
+// And this gem: https://www.youtube.com/watch?v=fC7oUOUEEi4
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {

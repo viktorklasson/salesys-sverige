@@ -1,4 +1,6 @@
 // Meme: https://www.youtube.com/watch?v=L_jWHffIx5E
+// Also epic: https://www.youtube.com/watch?v=uHgt8giw1LY
+// Pure art: https://www.youtube.com/watch?v=xfr64zoBTAQ
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {

@@ -1,4 +1,6 @@
 // Meme: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+// This one too: https://www.youtube.com/watch?v=y6120QOlsfU
+// Can't forget: https://www.youtube.com/watch?v=oHg5SJYRHA0
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {

@@ -1,4 +1,6 @@
 // Meme: https://www.youtube.com/watch?v=oHg5SJYRHA0
+// Absolute unit: https://www.youtube.com/watch?v=F57P9C4SAW4
+// Masterpiece: https://www.youtube.com/watch?v=K8UV7SAhvG4
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
