@@ -216,7 +216,18 @@ export const PhoneInterface: React.FC = () => {
           console.log('Call answered, bridging calls...');
           
           // Get the API call ID from the verto call
-          const vertoApiCallId = vertoCall?.apiCallId;
+          let vertoApiCallId = vertoCall?.apiCallId;
+          
+          // If not found on the dialog, try to get it from the verto instance
+          if (!vertoApiCallId && verto?.lastApiCallId) {
+            console.log('Getting API call ID from verto instance:', verto.lastApiCallId);
+            vertoApiCallId = verto.lastApiCallId;
+          }
+          
+          console.log('Attempting to bridge with API call ID:', vertoApiCallId);
+          console.log('vertoCall object:', vertoCall);
+          console.log('vertoCall.apiCallId:', vertoCall?.apiCallId);
+          console.log('verto.lastApiCallId:', verto?.lastApiCallId);
           
           if (vertoApiCallId) {
             try {

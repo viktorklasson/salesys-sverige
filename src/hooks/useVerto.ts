@@ -175,10 +175,21 @@ export function useVerto() {
           // Capture the API call ID when we get verto.answer response
           if (msg === 'verto.answer' && data?.variables?.verto_svar_api_callid) {
             console.log('Verto API call ID captured:', data.variables.verto_svar_api_callid);
+            console.log('Dialog object received:', dialog);
+            console.log('Dialog callID:', dialog?.callID);
+            
             // Store the API call ID on the dialog for later use
             if (dialog) {
               dialog.apiCallId = data.variables.verto_svar_api_callid;
               console.log('Stored API call ID on dialog:', dialog.apiCallId);
+              console.log('Dialog after API call ID set:', dialog);
+            }
+            
+            // Also store on the verto instance for global access
+            if (vertoRef.current) {
+              vertoRef.current.lastApiCallId = data.variables.verto_svar_api_callid;
+              vertoRef.current.lastDialogWithApiCallId = dialog;
+              console.log('Stored API call ID globally on verto instance');
             }
           }
         }
