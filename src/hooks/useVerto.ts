@@ -81,7 +81,28 @@ export function useVerto() {
         });
       };
 
-      // Load Verto after jQuery and jQuery JSON
+      // Load Media Device ID after jQuery JSON
+      const loadMediaDeviceId = () => {
+        return new Promise<void>((mediaResolve, mediaReject) => {
+          if ((window as any).assureMediaInputId) {
+            mediaResolve();
+            return;
+          }
+
+          const mediaScript = document.createElement('script');
+          mediaScript.src = '/media-device-id.min.js';
+          mediaScript.onload = () => {
+            console.log('Media Device ID loaded successfully');
+            mediaResolve();
+          };
+          mediaScript.onerror = () => {
+            mediaReject(new Error('Failed to load Media Device ID script'));
+          };
+          document.head.appendChild(mediaScript);
+        });
+      };
+
+      // Load Verto after all dependencies
       const loadVerto = () => {
         return new Promise<void>((vertoResolve, vertoReject) => {
           if ((window as any).jQuery?.verto || (window as any).$?.verto) {
@@ -103,9 +124,10 @@ export function useVerto() {
         });
       };
 
-      // Load scripts in sequence: jQuery -> jQuery JSON -> Verto
+      // Load scripts in sequence: jQuery -> jQuery JSON -> Media Device ID -> Verto
       loadJQuery()
         .then(() => loadJQueryJSON())
+        .then(() => loadMediaDeviceId())
         .then(() => loadVerto())
         .then(() => resolve())
         .catch((error) => reject(error));
