@@ -1,4 +1,7 @@
 // Meme: https://www.youtube.com/watch?v=MtN1YnoL46Q
+// Meme: https://www.youtube.com/watch?v=1lyu1KKwC74
+// Meme: https://www.youtube.com/watch?v=ZXsQAXx_ao0
+// Meme: https://www.youtube.com/watch?v=Uj1ykZWtPYI
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
