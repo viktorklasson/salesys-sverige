@@ -173,54 +173,23 @@ export function useVerto() {
 
     console.log('Creating call with Verto:', { destination, options });
     
-    return new Promise((resolve, reject) => {
-      try {
-        // Create the call and wait for the result
-        const callResult = vertoRef.current.newCall({
-          destination_number: destination,
-          caller_id_name: options.caller_id_name || 'WebRTC User',
-          caller_id_number: options.caller_id_number || 'anonymous',
-          tag: options.tag || 'default',
-          // Add callbacks to handle the call result
-          onCallStateChange: (state: any) => {
-            console.log('Call state changed:', state);
-          },
-          onDialogState: (dialog: any) => {
-            console.log('Dialog state:', dialog);
-            if (dialog.callID) {
-              console.log('Call ID received:', dialog.callID);
-              resolve({
-                callID: dialog.callID,
-                dialog: dialog,
-                originalResult: callResult
-              });
-            }
-          }
-        });
-        
-        console.log('Verto newCall result:', callResult);
-        
-        // If callResult has the callID immediately, resolve
-        if (callResult && callResult.callID) {
-          resolve(callResult);
-        } else if (callResult && typeof callResult === 'object') {
-          // Otherwise wait for the callback or check common properties
-          setTimeout(() => {
-            if (callResult.callID) {
-              resolve(callResult);
-            } else {
-              reject(new Error('Call ID not received within timeout'));
-            }
-          }, 5000);
-        } else {
-          reject(new Error('Failed to create call - no result returned'));
-        }
-        
-      } catch (error) {
-        console.error('Error creating Verto call:', error);
-        reject(error);
-      }
-    });
+    try {
+      const callResult = vertoRef.current.newCall({
+        destination_number: destination,
+        caller_id_name: options.caller_id_name || 'WebRTC User',
+        caller_id_number: options.caller_id_number || 'anonymous',
+        tag: options.tag || 'default'
+      });
+      
+      console.log('Verto newCall result:', callResult);
+      console.log('Verto newCall result type:', typeof callResult);
+      console.log('Verto newCall result keys:', callResult ? Object.keys(callResult) : 'null');
+      
+      return callResult;
+    } catch (error) {
+      console.error('Error creating Verto call:', error);
+      throw error;
+    }
   }, []);
 
   const hangup = useCallback((callId?: string) => {
