@@ -126,57 +126,69 @@ export const PhoneInterface: React.FC = () => {
     }
 
     try {
-      // CRITICAL: Set up audio output device immediately on user gesture
-      console.log('🎯 Setting up audio output device on user call gesture...');
+      console.log('🎯 Creating audio elements BEFORE call initiation...');
       
-      // Get or create audio elements
-      let mainAudio = document.getElementById('main_audio') as HTMLAudioElement;
-      if (!mainAudio) {
-        console.log('🔧 Creating main_audio element during call initiation...');
-        mainAudio = document.createElement('audio');
+      // STEP 1: Create audio elements IMMEDIATELY before any WebRTC activity
+      const createAudioElements = () => {
+        // Remove existing elements
+        const existingContainer = document.getElementById('verto-audio-container');
+        if (existingContainer) {
+          existingContainer.remove();
+        }
+
+        // Create container
+        const container = document.createElement('div');
+        container.id = 'verto-audio-container';
+        container.style.position = 'absolute';
+        container.style.left = '-9999px';
+        container.style.width = '1px';
+        container.style.height = '1px';
+
+        // Create main audio element for remote stream - MUST exist before Verto call
+        const mainAudio = document.createElement('audio');
         mainAudio.id = 'main_audio';
         mainAudio.autoplay = true;
         (mainAudio as any).playsInline = true;
         mainAudio.controls = false;
         mainAudio.volume = 1.0;
         
-        // Add to hidden container
-        let container = document.getElementById('verto-audio-container');
-        if (!container) {
-          container = document.createElement('div');
-          container.id = 'verto-audio-container';
-          container.style.position = 'absolute';
-          container.style.left = '-9999px';
-          container.style.width = '1px';
-          container.style.height = '1px';
-          document.body.appendChild(container);
-        }
+        // Create audio element for local stream
+        const audioElement = document.createElement('audio');
+        audioElement.id = 'audio_element';
+        audioElement.autoplay = true;
+        (audioElement as any).playsInline = true;
+        audioElement.controls = false;
+        audioElement.muted = true;
+
         container.appendChild(mainAudio);
-      }
+        container.appendChild(audioElement);
+        document.body.appendChild(container);
+
+        console.log('✅ Audio elements created and ready for Verto');
+        console.log('main_audio element:', document.getElementById('main_audio'));
+        console.log('audio_element:', document.getElementById('audio_element'));
+
+        return { mainAudio, audioElement };
+      };
+
+      // Create audio elements first
+      const audioElements = createAudioElements();
       
-      // Set the audio output device using the user gesture
-      if (selectedOutputDevice && 'setSinkId' in mainAudio) {
+      // STEP 2: Set audio output device using user gesture
+      if (selectedOutputDevice && 'setSinkId' in audioElements.mainAudio) {
         try {
-          await (mainAudio as any).setSinkId(selectedOutputDevice);
-          console.log('✅ Audio output device set during call initiation:', selectedOutputDevice);
-          
-          // Test play to ensure audio works
-          const testAudio = new Audio('data:audio/wav;base64,UklGRpQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU4AAAB/////');
-          testAudio.volume = 0.1;
-          if ('setSinkId' in testAudio) {
-            await (testAudio as any).setSinkId(selectedOutputDevice);
-          }
-          await testAudio.play();
-          console.log('✅ Audio test successful during call gesture');
+          await (audioElements.mainAudio as any).setSinkId(selectedOutputDevice);
+          console.log('✅ Audio output device set:', selectedOutputDevice);
         } catch (audioError) {
-          console.error('❌ Failed to set audio device during call:', audioError);
+          console.error('❌ Failed to set audio device:', audioError);
         }
       }
 
       setIsLoading(true);
       setCallState({ status: 'connecting' });
 
-      // Step 1: Create WebRTC call to establish session - call "park" to prepare for bridging
+      // STEP 3: Now create WebRTC call - audio elements are ready
+      console.log('🎯 Creating Verto call - audio elements are ready');
       console.log('Creating WebRTC session via Verto...');
       const vertoCall = call('park', {
         caller_id_name: 'WebRTC User',
