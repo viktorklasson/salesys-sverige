@@ -30,8 +30,10 @@ export function useVerto() {
         return;
       }
 
-      // Check if both jQuery and Verto are already loaded
-      if (window.hasOwnProperty('jQuery') && window.hasOwnProperty('Verto')) {
+      // Check if all required scripts are loaded
+      if (window.hasOwnProperty('jQuery') && 
+          (window as any).jQuery?.toJSON && 
+          ((window as any).jQuery?.verto || (window as any).$?.verto)) {
         isLoadedRef.current = true;
         resolve();
         return;
@@ -58,10 +60,31 @@ export function useVerto() {
         });
       };
 
-      // Load Verto after jQuery
+      // Load jQuery JSON plugin after jQuery
+      const loadJQueryJSON = () => {
+        return new Promise<void>((jsonResolve, jsonReject) => {
+          if ((window as any).jQuery?.toJSON) {
+            jsonResolve();
+            return;
+          }
+
+          const jsonScript = document.createElement('script');
+          jsonScript.src = '/jquery.json-2.4.min.js';
+          jsonScript.onload = () => {
+            console.log('jQuery JSON plugin loaded successfully');
+            jsonResolve();
+          };
+          jsonScript.onerror = () => {
+            jsonReject(new Error('Failed to load jQuery JSON plugin'));
+          };
+          document.head.appendChild(jsonScript);
+        });
+      };
+
+      // Load Verto after jQuery and jQuery JSON
       const loadVerto = () => {
         return new Promise<void>((vertoResolve, vertoReject) => {
-          if (window.hasOwnProperty('Verto')) {
+          if ((window as any).jQuery?.verto || (window as any).$?.verto) {
             vertoResolve();
             return;
           }
@@ -80,8 +103,9 @@ export function useVerto() {
         });
       };
 
-      // Load scripts in sequence
+      // Load scripts in sequence: jQuery -> jQuery JSON -> Verto
       loadJQuery()
+        .then(() => loadJQueryJSON())
         .then(() => loadVerto())
         .then(() => resolve())
         .catch((error) => reject(error));
