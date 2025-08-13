@@ -133,11 +133,14 @@ export const PhoneInterface: React.FC = () => {
       });
 
       console.log('Verto call created:', vertoCall);
-      // Remove the circular reference logging that causes JSON.stringify error
       
-      // For now, continue without the vertoCallId since Verto call creation is async
-      // The callID will be available later through WebSocket response
-      console.log('Verto call initiated, continuing with outbound call creation...');
+      // Get the callID from the Verto dialog object
+      const vertoCallId = vertoCall?.callID;
+      if (!vertoCallId) {
+        throw new Error('Failed to get Verto call ID - WebRTC session creation failed');
+      }
+      
+      console.log('Verto call ID extracted:', vertoCallId);
 
       // Step 2: Create outbound call via Telnect API
       console.log('Creating outbound call...');
@@ -157,16 +160,16 @@ export const PhoneInterface: React.FC = () => {
       console.log('Outbound call created:', outboundCallData);
       const outboundCallId = outboundCallData.data?.id || outboundCallData.id;
 
-      // Update call state with outbound call ID (verto call ID will be set later)
+      // Update call state with both call IDs
       setCallState({
         status: 'calling',
-        vertoCallId: undefined, // Will be updated when we get it from WebSocket
+        vertoCallId: vertoCallId,
         outboundCallId: outboundCallId,
         phoneNumber: phoneNumber
       });
 
       // Start polling for call status - bridging will happen when call is answered
-      startCallStatusPolling(outboundCallId, undefined);
+      startCallStatusPolling(outboundCallId, vertoCallId);
 
       toast({
         title: "Success",
@@ -209,10 +212,32 @@ export const PhoneInterface: React.FC = () => {
           // Bridge the calls when outbound call is answered
           console.log('Call answered, bridging calls...');
           
-          // For now, skip bridging since we need to fix the verto call ID extraction
-          console.log('Skipping bridge for now - need to implement proper verto call ID extraction');
-          
-          // TODO: Implement proper bridging once we can reliably get the verto call ID
+          if (vertoCallId) {
+            try {
+              console.log('Bridging calls:', { vertoCallId, outboundCallId: callId });
+              
+              // Bridge the calls using the telnect-call-action function
+              const { data: bridgeResult, error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
+                body: {
+                  callId: vertoCallId, // The verto call (park) that will be bridged
+                  action: 'bridge',
+                  bridgeCallId: callId // The outbound call to bridge with
+                }
+              });
+              
+              if (bridgeError) {
+                console.error('Error bridging calls:', bridgeError);
+                throw new Error('Failed to bridge calls');
+              }
+              
+              console.log('Calls bridged successfully:', bridgeResult);
+            } catch (bridgeError) {
+              console.error('Failed to bridge calls:', bridgeError);
+              // Continue with call anyway, bridging failure shouldn't end the call
+            }
+          } else {
+            console.error('Cannot bridge calls - missing verto call ID');
+          }
 
           setCallState(prev => ({ 
             ...prev, 

@@ -167,9 +167,19 @@ export function useVerto() {
         },
         onDialogState: (dialog: any) => {
           console.log('Verto dialog state:', dialog.state);
+          console.log('Verto dialog callID:', dialog.callID);
         },
         onmessage: (verto: any, dialog: any, msg: any, data: any) => {
           console.log('Verto message:', msg, data);
+          
+          // Capture when we get a call created response
+          if (msg === 'verto.invite' && data?.callID) {
+            console.log('Verto call created with ID:', data.callID);
+            // Store the callID for later use
+            if (dialog) {
+              dialog.vertoCallId = data.callID;
+            }
+          }
         }
       });
 
