@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CallInterface } from './CallInterface';
 import { AudioDeviceSelector } from './AudioDeviceSelector';
+import { useAudioDevices } from '@/hooks/useAudioDevices';
 import { useVerto } from '@/hooks/useVerto';
 
 interface PhoneLineData {
@@ -38,6 +39,7 @@ export const PhoneInterface: React.FC = () => {
   const { toast } = useToast();
   
   const { verto, connect, disconnect, call, hangup } = useVerto();
+  const { selectedOutputDevice, setAudioOutputDevice, audioDevices } = useAudioDevices();
 
   // Create phone line when component mounts
   useEffect(() => {
@@ -124,6 +126,53 @@ export const PhoneInterface: React.FC = () => {
     }
 
     try {
+      // CRITICAL: Set up audio output device immediately on user gesture
+      console.log('🎯 Setting up audio output device on user call gesture...');
+      
+      // Get or create audio elements
+      let mainAudio = document.getElementById('main_audio') as HTMLAudioElement;
+      if (!mainAudio) {
+        console.log('🔧 Creating main_audio element during call initiation...');
+        mainAudio = document.createElement('audio');
+        mainAudio.id = 'main_audio';
+        mainAudio.autoplay = true;
+        (mainAudio as any).playsInline = true;
+        mainAudio.controls = false;
+        mainAudio.volume = 1.0;
+        
+        // Add to hidden container
+        let container = document.getElementById('verto-audio-container');
+        if (!container) {
+          container = document.createElement('div');
+          container.id = 'verto-audio-container';
+          container.style.position = 'absolute';
+          container.style.left = '-9999px';
+          container.style.width = '1px';
+          container.style.height = '1px';
+          document.body.appendChild(container);
+        }
+        container.appendChild(mainAudio);
+      }
+      
+      // Set the audio output device using the user gesture
+      if (selectedOutputDevice && 'setSinkId' in mainAudio) {
+        try {
+          await (mainAudio as any).setSinkId(selectedOutputDevice);
+          console.log('✅ Audio output device set during call initiation:', selectedOutputDevice);
+          
+          // Test play to ensure audio works
+          const testAudio = new Audio('data:audio/wav;base64,UklGRpQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU4AAAB/////');
+          testAudio.volume = 0.1;
+          if ('setSinkId' in testAudio) {
+            await (testAudio as any).setSinkId(selectedOutputDevice);
+          }
+          await testAudio.play();
+          console.log('✅ Audio test successful during call gesture');
+        } catch (audioError) {
+          console.error('❌ Failed to set audio device during call:', audioError);
+        }
+      }
+
       setIsLoading(true);
       setCallState({ status: 'connecting' });
 
