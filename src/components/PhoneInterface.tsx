@@ -212,50 +212,25 @@ export const PhoneInterface: React.FC = () => {
         console.log('Call status:', callInfo.status);
         
         if (callInfo.status === 'answered') {
-          // Bridge the calls when outbound call is answered
           console.log('Call answered, bridging calls...');
           
-          // Get the API call ID from the verto call
-          let vertoApiCallId = vertoCall?.apiCallId;
-          
-          // If not found on the dialog, try to get it from the verto instance
-          if (!vertoApiCallId && verto?.lastApiCallId) {
-            console.log('Getting API call ID from verto instance:', verto.lastApiCallId);
-            vertoApiCallId = verto.lastApiCallId;
-          }
-          
-          console.log('Attempting to bridge with API call ID:', vertoApiCallId);
-          console.log('vertoCall object:', vertoCall);
-          console.log('vertoCall.apiCallId:', vertoCall?.apiCallId);
-          console.log('verto.lastApiCallId:', verto?.lastApiCallId);
-          
-          if (vertoApiCallId) {
-            try {
-              console.log('Bridging calls:', { vertoApiCallId, outboundCallId: callId });
-              
-              // Bridge the outbound call with the verto API call
-              const { data: bridgeResult, error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
-                body: {
-                  callId: callId, // The outbound call that will be bridged 
-                  action: 'bridge',
-                  bridgeCallId: vertoApiCallId // The verto API call to bridge with
-                }
-              });
-              
-              if (bridgeError) {
-                console.error('Error bridging calls:', bridgeError);
-                throw new Error('Failed to bridge calls');
+          try {
+            // Bridge the calls using the verto call ID and outbound call ID
+            const { data: bridgeResult, error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
+              body: {
+                callId: callId, // The outbound call that will be bridged 
+                action: 'bridge',
+                bridgeCallId: vertoCall?.callID // Use the verto call ID directly
               }
-              
+            });
+            
+            if (bridgeError) {
+              console.error('Error bridging calls:', bridgeError);
+            } else {
               console.log('Calls bridged successfully:', bridgeResult);
-            } catch (bridgeError) {
-              console.error('Failed to bridge calls:', bridgeError);
-              // Continue with call anyway, bridging failure shouldn't end the call
             }
-          } else {
-            console.error('Cannot bridge calls - missing verto API call ID. Waiting for verto.answer...');
-            // Don't set status to answered yet, keep polling until we get the API call ID
-            return;
+          } catch (bridgeError) {
+            console.error('Failed to bridge calls:', bridgeError);
           }
 
           setCallState(prev => ({ 
