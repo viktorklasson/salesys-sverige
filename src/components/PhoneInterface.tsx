@@ -135,11 +135,11 @@ export const PhoneInterface: React.FC = () => {
       console.log('Verto call created:', vertoCall);
       console.log('Verto call structure:', JSON.stringify(vertoCall, null, 2));
       
-      // Try different ways to get the call ID
-      const vertoCallId = vertoCall?.callID || 
-                         vertoCall?.currentCall?.callID || 
-                         vertoCall?.id ||
-                         vertoCall?.uuid;
+      // Extract call ID from the response
+      const vertoCallId = (vertoCall as any)?.callID || 
+                         (vertoCall as any)?.dialog?.callID || 
+                         (vertoCall as any)?.id ||
+                         (vertoCall as any)?.uuid;
       
       console.log('Extracted vertoCallId:', vertoCallId);
       
