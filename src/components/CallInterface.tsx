@@ -95,46 +95,50 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Verto audio elements - multiple IDs that Verto library may use */}
-      <div id="verto-phone-container" className="hidden">
+      {/* Verto expects specific audio element structure */}
+      <div id="verto-phone-container" style={{ display: 'none' }}>
+        {/* Remote audio - Verto attaches incoming call audio here */}
         <audio 
           id="main_audio" 
           autoPlay 
           playsInline 
           controls={false}
-          style={{ display: 'none' }}
+          ref={(el) => {
+            if (el) {
+              el.volume = 1.0;
+              console.log('Main audio element ready for Verto');
+            }
+          }}
           onLoadedMetadata={() => console.log('Main audio: metadata loaded')}
           onCanPlay={() => console.log('Main audio: can play')}
           onPlay={() => console.log('Main audio: started playing')}
-          onVolumeChange={() => console.log('Main audio: volume changed')}
           onError={(e) => console.error('Main audio error:', e)}
         />
+        
+        {/* Local audio - Verto uses this for local stream */}
         <audio 
           id="audio_element" 
           autoPlay 
           playsInline 
           controls={false}
-          style={{ display: 'none' }}
+          muted
+          ref={(el) => {
+            if (el) {
+              el.volume = 1.0;
+              console.log('Audio element ready for Verto');
+            }
+          }}
           onLoadedMetadata={() => console.log('Audio element: metadata loaded')}
           onCanPlay={() => console.log('Audio element: can play')}
           onPlay={() => console.log('Audio element: started playing')}
           onError={(e) => console.error('Audio element error:', e)}
         />
-        {/* Additional Verto-specific audio elements */}
-        <audio 
-          id="verto-audio" 
-          autoPlay 
-          playsInline 
-          controls={false}
-          style={{ display: 'none' }}
-        />
-        <audio 
-          id="remote-audio" 
-          autoPlay 
-          playsInline 
-          controls={false}
-          style={{ display: 'none' }}
-        />
+        
+        {/* Additional elements Verto might look for */}
+        <audio id="verto-audio" autoPlay playsInline />
+        <audio id="remote-audio" autoPlay playsInline />
+        <audio id="localVideo" autoPlay playsInline muted />
+        <audio id="remoteVideo" autoPlay playsInline />
       </div>
       
       {/* Header with minimize button */}
