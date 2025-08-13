@@ -19,6 +19,7 @@ interface PhoneLineData {
 interface CallState {
   status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
   callId?: string;
+  vertoCallId?: string;
   outboundCallId?: string;
   startTime?: Date;
   phoneNumber?: string;
@@ -33,7 +34,7 @@ export const PhoneInterface: React.FC = () => {
   const statusPollingRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   
-  const { verto, connect, disconnect } = useVerto();
+  const { verto, connect, disconnect, call, hangup } = useVerto();
 
   // Create phone line when component mounts
   useEffect(() => {
@@ -123,7 +124,18 @@ export const PhoneInterface: React.FC = () => {
       setIsLoading(true);
       setCallState({ status: 'connecting' });
 
-      // Create outbound call via Telnect API directly
+      // Step 1: Call "park" from Verto to get a call ID for bridging
+      console.log('Calling park from Verto...');
+      const vertoCall = await call('park', {
+        caller_id_name: 'WebRTC User',
+        caller_id_number: phoneLineData?.username || '',
+        tag: 'verto-park-call'
+      });
+
+      console.log('Verto call created:', vertoCall);
+      const vertoCallId = vertoCall.callID;
+
+      // Step 2: Create outbound call via Telnect API
       console.log('Creating outbound call...');
       const { data: outboundCallData, error: outboundError } = await supabase.functions.invoke('telnect-create-call', {
         body: {
@@ -141,15 +153,16 @@ export const PhoneInterface: React.FC = () => {
       console.log('Outbound call created:', outboundCallData);
       const outboundCallId = outboundCallData.data?.id || outboundCallData.id;
 
-      // Update call state
+      // Update call state with both call IDs
       setCallState({
         status: 'calling',
+        vertoCallId: vertoCallId,
         outboundCallId: outboundCallId,
         phoneNumber: phoneNumber
       });
 
-      // Start polling for call status
-      startCallStatusPolling(outboundCallId);
+      // Start polling for call status - bridging will happen when call is answered
+      startCallStatusPolling(outboundCallId, vertoCallId);
 
       toast({
         title: "Success",
@@ -169,7 +182,7 @@ export const PhoneInterface: React.FC = () => {
     }
   };
 
-  const startCallStatusPolling = (callId: string) => {
+  const startCallStatusPolling = (callId: string, vertoCallId: string) => {
     // Clear any existing polling
     if (statusPollingRef.current) {
       clearInterval(statusPollingRef.current);
@@ -189,6 +202,27 @@ export const PhoneInterface: React.FC = () => {
         console.log('Call status:', callInfo.status);
         
         if (callInfo.status === 'answered') {
+          // Bridge the calls when outbound call is answered
+          console.log('Call answered, bridging calls...');
+          try {
+            const { data: bridgeData, error: bridgeError } = await supabase.functions.invoke('telnect-bridge-calls', {
+              body: {
+                vertoCallId: vertoCallId,
+                outboundCallId: callId
+              }
+            });
+
+            if (bridgeError) {
+              console.error('Error bridging calls:', bridgeError);
+              // Don't throw error here, just log it and continue
+            } else {
+              console.log('Calls bridged successfully:', bridgeData);
+            }
+          } catch (bridgeError) {
+            console.error('Error bridging calls:', bridgeError);
+            // Don't throw error here, just log it and continue
+          }
+
           setCallState(prev => ({ 
             ...prev, 
             status: 'answered',
@@ -217,6 +251,10 @@ export const PhoneInterface: React.FC = () => {
 
   const handleHangup = async () => {
     try {
+      if (callState.vertoCallId) {
+        await hangup(callState.vertoCallId);
+      }
+      
       if (callState.outboundCallId) {
         await supabase.functions.invoke('telnect-call-action', {
           body: {

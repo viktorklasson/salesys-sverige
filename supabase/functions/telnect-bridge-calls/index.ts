@@ -26,8 +26,10 @@ serve(async (req) => {
       throw new Error('Both vertoCallId and outboundCallId are required')
     }
 
-    // Bridge the two calls together
-    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${vertoCallId}`, {
+    // Bridge the two calls together using the correct API format
+    console.log('Attempting to bridge WebRTC calls...');
+    
+    const response = await fetch(`https://bss.telnect.com/api/v1/Calls/${outboundCallId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${telnectToken}`,
@@ -37,7 +39,9 @@ serve(async (req) => {
         actions: [
           {
             action: "bridge",
-            destination: outboundCallId
+            param: {
+              id: vertoCallId
+            }
           }
         ]
       })

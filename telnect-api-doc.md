@@ -157,19 +157,45 @@ This document provides comprehensive documentation for the Telnect API, a teleco
 {
   "actions": [
     {
-      "action": "transfer",
-      "destination": "+46890510"
+      "action": "bridge",
+      "param": {
+        "id": "call-id-to-bridge-with"
+      }
     }
   ]
 }
 ```
 
 **Available Actions:**
-- `transfer`: Transfer call to another number
-- `hold`: Put call on hold
-- `resume`: Resume held call
-- `mute`: Mute the call
-- `unmute`: Unmute the call
+- `park`: Park the call
+- `answer`: Answer the call
+- `ringing`: Signal ringing to caller
+- `hangup`: Hang up the call (optional param: `reason`)
+- `route`: Route call to provided number (required param: `number`)
+- `bridge`: Bridge two calls together (required param: `id` - ID of call to bridge with)
+- `recording_start`: Start a recording (optional params: `id`, `mono`)
+- `recording_stop`: Stop a recording (optional param: `id`)
+- `playback`: Play media (required param: `media`, optional params: `tone`, `length`, `silence`, `loops`)
+- `playback_stop`: Stop media playback
+- `dtmf`: Send DTMF tones (required param: `digit`)
+- `eavesdrop`: Listen to (and whisper to) other call (required param: `id`, optional param: `talk`)
+
+**Bridge Action Details:**
+The `bridge` action requires a `param` object with an `id` field containing the ID of the call to bridge with.
+
+**Example Bridge Request:**
+```json
+{
+  "actions": [
+    {
+      "action": "bridge",
+      "param": {
+        "id": "c000daeuyzzoq-za3wqdi-ycuaugy-jmqq"
+      }
+    }
+  ]
+}
+```
 
 ### 4. Hangup Call
 
