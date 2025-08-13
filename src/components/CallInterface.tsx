@@ -95,51 +95,66 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Verto expects specific audio element structure */}
-      <div id="verto-phone-container" style={{ display: 'none' }}>
-        {/* Remote audio - Verto attaches incoming call audio here */}
+      {/* Audio elements must be available immediately for Verto */}
+      <div id="verto-phone-container" style={{ position: 'absolute', left: '-9999px' }}>
         <audio 
           id="main_audio" 
           autoPlay 
           playsInline 
           controls={false}
-          ref={(el) => {
-            if (el) {
-              el.volume = 1.0;
-              console.log('Main audio element ready for Verto');
-            }
+          style={{ display: 'block' }}
+          onLoadedMetadata={() => {
+            console.log('🎵 Main audio: metadata loaded - remote stream attached!');
           }}
-          onLoadedMetadata={() => console.log('Main audio: metadata loaded')}
-          onCanPlay={() => console.log('Main audio: can play')}
-          onPlay={() => console.log('Main audio: started playing')}
-          onError={(e) => console.error('Main audio error:', e)}
+          onCanPlay={() => {
+            console.log('🎵 Main audio: can play - audio ready!');
+          }}
+          onPlay={() => {
+            console.log('🎵 Main audio: PLAYING - you should hear audio now!');
+          }}
+          onVolumeChange={(e) => {
+            const audio = e.target as HTMLAudioElement;
+            console.log('🎵 Main audio: volume changed to', audio.volume);
+          }}
+          onError={(e) => {
+            console.error('❌ Main audio error:', e);
+          }}
         />
         
-        {/* Local audio - Verto uses this for local stream */}
         <audio 
           id="audio_element" 
           autoPlay 
           playsInline 
           controls={false}
           muted
-          ref={(el) => {
-            if (el) {
-              el.volume = 1.0;
-              console.log('Audio element ready for Verto');
-            }
-          }}
-          onLoadedMetadata={() => console.log('Audio element: metadata loaded')}
-          onCanPlay={() => console.log('Audio element: can play')}
-          onPlay={() => console.log('Audio element: started playing')}
-          onError={(e) => console.error('Audio element error:', e)}
+          style={{ display: 'block' }}
         />
-        
-        {/* Additional elements Verto might look for */}
-        <audio id="verto-audio" autoPlay playsInline />
-        <audio id="remote-audio" autoPlay playsInline />
-        <audio id="localVideo" autoPlay playsInline muted />
-        <audio id="remoteVideo" autoPlay playsInline />
       </div>
+      
+      {/* Debugging: Log element availability */}
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          console.log('🔍 Audio elements check:');
+          console.log('main_audio exists:', !!document.getElementById('main_audio'));
+          console.log('audio_element exists:', !!document.getElementById('audio_element'));
+          
+          // Monitor for srcObject changes
+          const mainAudio = document.getElementById('main_audio');
+          if (mainAudio) {
+            const observer = new MutationObserver(() => {
+              if (mainAudio.srcObject) {
+                console.log('🎯 srcObject set on main_audio!', mainAudio.srcObject);
+                mainAudio.play().then(() => {
+                  console.log('✅ main_audio.play() successful');
+                }).catch(err => {
+                  console.error('❌ main_audio.play() failed:', err);
+                });
+              }
+            });
+            observer.observe(mainAudio, { attributes: true, attributeFilter: ['src'] });
+          }
+        `
+      }} />
       
       {/* Header with minimize button */}
       <div className="flex justify-between items-center p-4 border-b">
