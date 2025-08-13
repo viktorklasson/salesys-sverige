@@ -139,73 +139,85 @@ flowchart TD
 
 ```mermaid
 graph TB
-    %% User Interface Layer
-    subgraph "Frontend (React + TypeScript)"
-        UI[Phone Interface Component]
-        VertoHook[useVerto Hook]
-        SupabaseClient[Supabase Client]
-    end
-
-    %% Supabase Edge Functions
-    subgraph "Supabase Edge Functions"
-        CreatePhone[telnect-create-phone]
-        CreateCall[telnect-create-call]
-        GetCall[telnect-get-call]
-        CallAction[telnect-call-action]
-        BridgeCalls[telnect-bridge-calls]
-    end
-
-    %% External Services
-    subgraph "Telnect API (WebRTC)"
-        TelnectAPI[Telnect API Server]
-        TelnectWS[Telnect WebSocket Server]
-    end
-
-    %% Verto WebRTC
-    subgraph "Verto WebRTC"
-        VertoWS[Verto WebSocket]
-        VertoCall[Verto Call Session]
-    end
-
+    %% User Nodes
+    User[👤 User]
+    
+    %% Frontend Nodes
+    Login[🔐 Login System]
+    PhoneInterface[📱 Phone Interface Component]
+    VertoHook[🔌 useVerto Hook]
+    SupabaseClient[📡 Supabase Client]
+    
+    %% Supabase Edge Function Nodes
+    CreatePhoneFunc[⚡ telnect-create-phone]
+    CreateCallFunc[⚡ telnect-create-call]
+    GetCallFunc[⚡ telnect-get-call]
+    CallActionFunc[⚡ telnect-call-action]
+    BridgeCallsFunc[⚡ telnect-bridge-calls]
+    
+    %% External Service Nodes
+    SupabaseAuth[🔑 Supabase Auth]
+    TelnectAPI[🌐 Telnect API Server]
+    TelnectWS[🔌 Telnect WebSocket Server]
+    VertoWS[🔌 Verto WebSocket Server]
+    
     %% Call Flow Steps
-    subgraph "Actual Call Flow Process"
-        ComponentMount[1. Component Mount]
-        CreatePhoneLine[2. Create Phone Line]
-        ConnectVerto[3. Connect to Verto]
-        UserInput[4. User Enters Number]
-        MakeCall[5. Make Outbound Call]
-        PollStatus[6. Poll Call Status]
-        BridgeCalls[7. Bridge Calls]
-        HandleHangup[8. Handle Hangup]
+    subgraph "Call Flow Process"
+        LoginFlow[1. User Login]
+        ComponentInit[2. Component Initialization]
+        MakeCall[3. User Makes Call]
+        PollStatus[4. Call Status Polling]
+        BridgeCalls[5. Call Bridging]
+        HandleHangup[6. User Hangs Up]
     end
 
-    %% Connections
-    UI --> VertoHook
-    UI --> SupabaseClient
-    SupabaseClient --> CreatePhone
-    SupabaseClient --> CreateCall
-    SupabaseClient --> GetCall
-    SupabaseClient --> CallAction
-    SupabaseClient --> BridgeCalls
-
-    CreatePhone --> TelnectAPI
-    CreateCall --> TelnectAPI
-    GetCall --> TelnectAPI
-    CallAction --> TelnectAPI
-    BridgeCalls --> TelnectAPI
-
+    %% User Interactions
+    User --> Login
+    User --> PhoneInterface
+    User --> PhoneInterface
+    
+    %% Frontend Connections
+    Login --> SupabaseAuth
+    PhoneInterface --> VertoHook
+    PhoneInterface --> SupabaseClient
+    
+    %% Supabase Function Connections
+    SupabaseClient --> CreatePhoneFunc
+    SupabaseClient --> CreateCallFunc
+    SupabaseClient --> GetCallFunc
+    SupabaseClient --> CallActionFunc
+    SupabaseClient --> BridgeCallsFunc
+    
+    %% External API Connections
+    CreatePhoneFunc --> TelnectAPI
+    CreateCallFunc --> TelnectAPI
+    GetCallFunc --> TelnectAPI
+    CallActionFunc --> TelnectAPI
+    BridgeCallsFunc --> TelnectAPI
+    
+    %% WebSocket Connections
     VertoHook --> VertoWS
     VertoWS --> TelnectWS
-    VertoCall --> TelnectWS
-
+    
     %% Flow Sequence
-    ComponentMount --> CreatePhoneLine
-    CreatePhoneLine --> ConnectVerto
-    ConnectVerto --> UserInput
-    UserInput --> MakeCall
+    LoginFlow --> ComponentInit
+    ComponentInit --> MakeCall
     MakeCall --> PollStatus
     PollStatus --> BridgeCalls
     BridgeCalls --> HandleHangup
+    
+    %% Styling
+    classDef userNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef frontendNode fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef supabaseNode fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef externalNode fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef flowNode fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class User userNode
+    class Login,PhoneInterface,VertoHook,SupabaseClient frontendNode
+    class CreatePhoneFunc,CreateCallFunc,GetCallFunc,CallActionFunc,BridgeCallsFunc supabaseNode
+    class SupabaseAuth,TelnectAPI,TelnectWS,VertoWS externalNode
+    class LoginFlow,ComponentInit,MakeCall,PollStatus,BridgeCalls,HandleHangup flowNode
 ```
 
 ## Corrected Call Flow Sequence
