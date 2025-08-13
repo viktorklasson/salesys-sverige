@@ -133,7 +133,7 @@ export const PhoneInterface: React.FC = () => {
       });
 
       console.log('Verto call created:', vertoCall);
-      const vertoCallId = vertoCall.callID;
+      const vertoCallId = vertoCall.currentCall?.callID;
 
       // Step 2: Create outbound call via Telnect API
       console.log('Creating outbound call...');

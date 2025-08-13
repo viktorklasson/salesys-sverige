@@ -22,8 +22,12 @@ serve(async (req) => {
       throw new Error('TELNECT_API_TOKEN not configured')
     }
 
-    if (!vertoCallId || !outboundCallId) {
-      throw new Error('Both vertoCallId and outboundCallId are required')
+    if (!outboundCallId) {
+      throw new Error('outboundCallId is required')
+    }
+
+    if (!vertoCallId) {
+      console.log('No vertoCallId provided, bridging may not work correctly')
     }
 
     // Bridge the two calls together using the correct API format
