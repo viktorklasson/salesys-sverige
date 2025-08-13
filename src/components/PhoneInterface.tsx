@@ -6,6 +6,7 @@ import { Phone, PhoneCall, PhoneOff, Minus, Radio } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { CallInterface } from './CallInterface';
+import { AudioDeviceSelector } from './AudioDeviceSelector';
 import { useVerto } from '@/hooks/useVerto';
 
 interface PhoneLineData {
@@ -315,103 +316,112 @@ export const PhoneInterface: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Card className="p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Phone className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Phone Interface</h2>
-        </div>
-
-        {/* Connection Status */}
-        <div className="mb-4">
-          <div className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-sm">
-              {isConnected ? 'WebRTC Connected' : 'WebRTC Disconnected'}
-            </span>
-          </div>
-        </div>
-
-        {/* Phone Number Input */}
-        <div className="mb-4">
-          <Input
-            type="tel"
-            placeholder="Enter phone number (e.g., +46701234567)"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            disabled={!isConnected || callState.status !== 'idle'}
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex space-x-2">
-          {callState.status === 'idle' ? (
-            <Button
-              onClick={handleCall}
-              disabled={!isConnected || !phoneNumber.trim() || isLoading}
-              className="flex-1"
-            >
-              {isLoading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Connecting...</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <PhoneCall className="h-4 w-4" />
-                  <span>Call</span>
-                </div>
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleHangup}
-              variant="destructive"
-              className="flex-1"
-            >
-              <div className="flex items-center space-x-2">
-                <PhoneOff className="h-4 w-4" />
-                <span>Hang Up</span>
-              </div>
-            </Button>
-          )}
-
-          <Button
-            onClick={handleDisconnect}
-            variant="outline"
-            disabled={!isConnected}
-          >
-            <Radio className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Call Status */}
-        {callState.status !== 'idle' && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-            <div className="text-sm text-gray-600">
-              Status: <span className="font-medium">{callState.status}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <Card className="p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <Phone className="h-5 w-5" />
+              <h2 className="text-lg font-semibold">Phone Interface</h2>
             </div>
-            {callState.phoneNumber && (
-              <div className="text-sm text-gray-600">
-                Number: <span className="font-medium">{callState.phoneNumber}</span>
-              </div>
-            )}
-            {callState.startTime && (
-              <div className="text-sm text-gray-600">
-                Started: <span className="font-medium">{callState.startTime.toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
-        )}
-      </Card>
 
-             {/* Call Interface */}
-       {callState.status === 'answered' && (
-         <CallInterface
-           callState={callState}
-           onHangUp={handleHangup}
-           onMinimize={() => setCallState(prev => ({ ...prev, status: 'idle' }))}
-         />
-       )}
+            {/* Connection Status */}
+            <div className="mb-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className="text-sm">
+                  {isConnected ? 'WebRTC Connected' : 'WebRTC Disconnected'}
+                </span>
+              </div>
+            </div>
+
+            {/* Phone Number Input */}
+            <div className="mb-4">
+              <Input
+                type="tel"
+                placeholder="Enter phone number (e.g., +46701234567)"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                disabled={!isConnected || callState.status !== 'idle'}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-2">
+              {callState.status === 'idle' ? (
+                <Button
+                  onClick={handleCall}
+                  disabled={!isConnected || !phoneNumber.trim() || isLoading}
+                  className="flex-1"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Connecting...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <PhoneCall className="h-4 w-4" />
+                      <span>Call</span>
+                    </div>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleHangup}
+                  variant="destructive"
+                  className="flex-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <PhoneOff className="h-4 w-4" />
+                    <span>Hang Up</span>
+                  </div>
+                </Button>
+              )}
+
+              <Button
+                onClick={handleDisconnect}
+                variant="outline"
+                disabled={!isConnected}
+              >
+                <Radio className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Call Status */}
+            {callState.status !== 'idle' && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">
+                  Status: <span className="font-medium">{callState.status}</span>
+                </div>
+                {callState.phoneNumber && (
+                  <div className="text-sm text-gray-600">
+                    Number: <span className="font-medium">{callState.phoneNumber}</span>
+                  </div>
+                )}
+                {callState.startTime && (
+                  <div className="text-sm text-gray-600">
+                    Started: <span className="font-medium">{callState.startTime.toLocaleTimeString()}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Audio Device Selector */}
+        <div className="lg:col-span-1">
+          <AudioDeviceSelector />
+        </div>
+      </div>
+
+      {/* Call Interface */}
+      {callState.status === 'answered' && (
+        <CallInterface
+          callState={callState}
+          onHangUp={handleHangup}
+          onMinimize={() => setCallState(prev => ({ ...prev, status: 'idle' }))}
+        />
+      )}
     </div>
   );
 };

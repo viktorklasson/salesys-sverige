@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PhoneOff, Minus } from 'lucide-react';
+import { useAudioDevices } from '@/hooks/useAudioDevices';
 
 interface CallState {
   status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
@@ -17,6 +18,7 @@ interface CallInterfaceProps {
 
 export function CallInterface({ callState, onHangUp, onMinimize }: CallInterfaceProps) {
   const [duration, setDuration] = useState(0);
+  const { selectedOutputDevice, setAudioOutputDevice } = useAudioDevices();
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -33,6 +35,15 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
       if (interval) clearInterval(interval);
     };
   }, [callState.status, callState.startTime]);
+
+  // Set audio output device when component mounts or device changes
+  useEffect(() => {
+    const audioElement = document.getElementById('main_audio') as HTMLAudioElement;
+    if (audioElement && selectedOutputDevice) {
+      console.log('Setting audio output device on call interface:', selectedOutputDevice);
+      setAudioOutputDevice(selectedOutputDevice, audioElement);
+    }
+  }, [selectedOutputDevice, setAudioOutputDevice]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
