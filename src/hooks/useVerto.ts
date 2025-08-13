@@ -33,6 +33,7 @@ export function useVerto() {
       // Check if all required scripts are loaded
       if (window.hasOwnProperty('jQuery') && 
           (window as any).jQuery?.toJSON && 
+          (window as any).assureMediaInputId &&
           ((window as any).jQuery?.verto || (window as any).$?.verto)) {
         isLoadedRef.current = true;
         resolve();

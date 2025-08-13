@@ -133,7 +133,7 @@ export const PhoneInterface: React.FC = () => {
       });
 
       console.log('Verto call created:', vertoCall);
-      console.log('Verto call structure:', JSON.stringify(vertoCall, null, 2));
+      // Remove the circular reference logging that causes JSON.stringify error
       
       // For now, continue without the vertoCallId since Verto call creation is async
       // The callID will be available later through WebSocket response
