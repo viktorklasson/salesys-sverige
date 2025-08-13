@@ -45,6 +45,10 @@ serve(async (req) => {
     console.log('Extracted action:', action, '(type:', typeof action, ')');
     console.log('Extracted destination:', destination, '(type:', typeof destination, ')');
     console.log('Extracted bridgeCallId:', bridgeCallId, '(type:', typeof bridgeCallId, ')');
+    
+    // Log all available keys in requestData for debugging
+    console.log('All keys in requestData:', Object.keys(requestData));
+    console.log('Full requestData object:', JSON.stringify(requestData, null, 2));
 
     console.log('=== ENVIRONMENT CHECK ===');
     const telnectToken = Deno.env.get('TELNECT_API_TOKEN');
