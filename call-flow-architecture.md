@@ -79,7 +79,6 @@ flowchart TD
         PhoneInterface -->|"5.1 Call answered - bridge"| BridgeCallsFunc
         BridgeCallsFunc -->|"5.2 POST /Calls/{outboundCallId}"| TelnectAPI
         TelnectAPI -->|"5.3 Bridge action"| TelnectAPI
-        Note over TelnectAPI: action: 'bridge'<br/>param.id = vertoCallId
         TelnectAPI -->|"5.4 Bridge successful"| BridgeCallsFunc
         BridgeCallsFunc -->|"5.5 Calls bridged"| PhoneInterface
         PhoneInterface -->|"5.6 Call connected"| User
@@ -93,7 +92,6 @@ flowchart TD
         PhoneInterface -->|"6.5 Hangup Telnect call"| CallActionFunc
         CallActionFunc -->|"6.6 POST /Calls/{callId}"| TelnectAPI
         TelnectAPI -->|"6.7 Hangup action"| TelnectAPI
-        Note over TelnectAPI: action: 'hangup'
         TelnectAPI -->|"6.8 Call terminated"| CallActionFunc
         CallActionFunc -->|"6.9 Hangup complete"| PhoneInterface
         PhoneInterface -->|"6.10 Call ended"| User
