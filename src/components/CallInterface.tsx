@@ -20,6 +20,115 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
   const [duration, setDuration] = useState(0);
   const { selectedOutputDevice, setAudioOutputDevice } = useAudioDevices();
 
+  // Ensure audio elements exist before Verto needs them
+  useEffect(() => {
+    const createAudioElements = () => {
+      // Remove existing elements to avoid duplicates
+      const existingContainer = document.getElementById('verto-audio-container');
+      if (existingContainer) {
+        existingContainer.remove();
+      }
+
+      // Create container
+      const container = document.createElement('div');
+      container.id = 'verto-audio-container';
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.width = '1px';
+      container.style.height = '1px';
+
+      // Create main audio element for remote stream
+      const mainAudio = document.createElement('audio');
+      mainAudio.id = 'main_audio';
+      mainAudio.autoplay = true;
+      (mainAudio as any).playsInline = true;
+      mainAudio.controls = false;
+      mainAudio.volume = 1.0;
+      
+      mainAudio.addEventListener('loadedmetadata', () => {
+        console.log('🎵 main_audio: metadata loaded');
+      });
+      
+      mainAudio.addEventListener('canplay', () => {
+        console.log('🎵 main_audio: can play');
+        if (mainAudio.srcObject) {
+          mainAudio.play().catch(e => console.error('❌ main_audio play failed:', e));
+        }
+      });
+      
+      mainAudio.addEventListener('play', () => {
+        console.log('✅ main_audio: PLAYING!');
+      });
+
+      // Create audio element for local stream  
+      const audioElement = document.createElement('audio');
+      audioElement.id = 'audio_element';
+      audioElement.autoplay = true;
+      (audioElement as any).playsInline = true;
+      audioElement.controls = false;
+      audioElement.muted = true;
+
+      container.appendChild(mainAudio);
+      container.appendChild(audioElement);
+      document.body.appendChild(container);
+
+      console.log('🔧 Audio elements created and added to document');
+
+      // Monitor for srcObject changes
+      Object.defineProperty(mainAudio, 'srcObject', {
+        get() { return this._srcObject; },
+        set(value) {
+          console.log('🎯 Setting srcObject on main_audio:', value);
+          this._srcObject = value;
+          if (value) {
+            console.log('🎵 Stream tracks:', value.getTracks().map(t => `${t.kind}:${t.enabled}`));
+            
+            // Try to play immediately
+            this.play().then(() => {
+              console.log('✅ Auto-play successful');
+            }).catch(err => {
+              console.error('❌ Auto-play blocked:', err);
+              console.log('💡 Click anywhere to enable audio');
+              
+              // Add click handler for user interaction
+              const enableAudio = () => {
+                this.play().then(() => {
+                  console.log('✅ Audio enabled after user interaction');
+                  document.removeEventListener('click', enableAudio);
+                }).catch(e => console.error('❌ Manual play failed:', e));
+              };
+              document.addEventListener('click', enableAudio);
+            });
+          }
+        }
+      });
+
+      return { mainAudio, audioElement };
+    };
+
+    const audioElements = createAudioElements();
+
+    // Apply selected audio device
+    if (selectedOutputDevice) {
+      setAudioOutputDevice(selectedOutputDevice, audioElements.mainAudio);
+    }
+
+    return () => {
+      const container = document.getElementById('verto-audio-container');
+      if (container) {
+        container.remove();
+      }
+    };
+  }, []);
+
+  // Update audio device when selection changes
+  useEffect(() => {
+    const mainAudio = document.getElementById('main_audio') as HTMLAudioElement;
+    if (mainAudio && selectedOutputDevice) {
+      setAudioOutputDevice(selectedOutputDevice, mainAudio);
+    }
+  }, [selectedOutputDevice, setAudioOutputDevice]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
@@ -35,23 +144,6 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
       if (interval) clearInterval(interval);
     };
   }, [callState.status, callState.startTime]);
-
-  // Set audio output device when component mounts or device changes
-  useEffect(() => {
-    const audioElements = [
-      document.getElementById('main_audio'),
-      document.getElementById('audio_element'),
-      document.getElementById('verto-audio'),
-      document.getElementById('remote-audio')
-    ].filter(Boolean) as HTMLAudioElement[];
-    
-    if (audioElements.length > 0 && selectedOutputDevice) {
-      console.log('Setting audio output device on call interface:', selectedOutputDevice);
-      audioElements.forEach(audioElement => {
-        setAudioOutputDevice(selectedOutputDevice, audioElement);
-      });
-    }
-  }, [selectedOutputDevice, setAudioOutputDevice]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -95,98 +187,6 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Audio elements for Verto - must be accessible */}
-      <div id="verto-phone-container" style={{ position: 'absolute', left: '-9999px', width: '1px', height: '1px' }}>
-        <audio 
-          id="main_audio" 
-          autoPlay 
-          playsInline 
-          controls={false}
-          ref={(el) => {
-            if (el) {
-              el.volume = 1.0;
-              console.log('🎵 main_audio element created and ready');
-            }
-          }}
-          onLoadedData={() => console.log('🎵 main_audio: loadeddata event')}
-          onLoadStart={() => console.log('🎵 main_audio: loadstart event')}
-          onLoadedMetadata={() => console.log('🎵 main_audio: metadata loaded')}
-          onCanPlay={() => {
-            console.log('🎵 main_audio: can play');
-            const audio = document.getElementById('main_audio') as HTMLAudioElement;
-            if (audio && audio.srcObject) {
-              console.log('🎵 main_audio has srcObject, attempting play...');
-              audio.play().catch(e => console.error('❌ main_audio play failed:', e));
-            }
-          }}
-          onPlay={() => console.log('✅ main_audio: PLAYING!')}
-          onPause={() => console.log('⏸️ main_audio: paused')}
-          onError={(e) => console.error('❌ main_audio error:', e)}
-        />
-        
-        <audio 
-          id="audio_element" 
-          autoPlay 
-          playsInline 
-          controls={false}
-          muted
-          ref={(el) => {
-            if (el) {
-              el.volume = 1.0;
-            }
-          }}
-          onPlay={() => console.log('🎤 audio_element: playing (local stream)')}
-        />
-      </div>
-
-      {/* Monitor for Verto trying to access audio elements */}
-      <script dangerouslySetInnerHTML={{
-        __html: `
-          console.log('🔍 Monitoring audio elements...');
-          
-          // Override getElementById to catch Verto's lookups
-          const originalGetElementById = document.getElementById.bind(document);
-          document.getElementById = function(id) {
-            const element = originalGetElementById(id);
-            if (id.includes('audio') || id === 'main_audio' || id === 'audio_element') {
-              console.log('🔍 Verto looking for element:', id, element ? '✅ found' : '❌ not found');
-            }
-            return element;
-          };
-
-          // Monitor srcObject changes
-          const checkAudioElements = () => {
-            const mainAudio = originalGetElementById('main_audio');
-            const audioElement = originalGetElementById('audio_element');
-            
-            if (mainAudio) {
-              Object.defineProperty(mainAudio, 'srcObject', {
-                get() { return this._srcObject; },
-                set(value) {
-                  console.log('🎯 Setting srcObject on main_audio:', value);
-                  this._srcObject = value;
-                  if (value) {
-                    console.log('🎵 Stream tracks:', value.getTracks().map(t => t.kind + ':' + t.enabled));
-                    this.play().then(() => {
-                      console.log('✅ Auto-play successful on main_audio');
-                    }).catch(err => {
-                      console.error('❌ Auto-play failed on main_audio:', err);
-                      // Try user interaction
-                      document.addEventListener('click', () => {
-                        this.play().catch(e => console.error('❌ Manual play failed:', e));
-                      }, { once: true });
-                    });
-                  }
-                }
-              });
-            }
-          };
-
-          // Run immediately and after DOM updates
-          checkAudioElements();
-          setTimeout(checkAudioElements, 100);
-        `
-      }} />
       
       {/* Header with minimize button */}
       <div className="flex justify-between items-center p-4 border-b">
