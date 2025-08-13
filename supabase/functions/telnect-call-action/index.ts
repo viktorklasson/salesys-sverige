@@ -114,14 +114,19 @@ serve(async (req) => {
         console.log('Added destination to action object:', JSON.stringify(actionObj, null, 2));
       }
       
-      // Handle bridge action - requires bridgeCallId parameter
+      // Handle bridge action - requires bridgeCallId parameter with specific formatting
       if (action === 'bridge') {
         if (!bridgeCallId) {
           console.error('ERROR: bridgeCallId is required for bridge action but missing');
           throw new Error('bridgeCallId is required for bridge action');
         }
-        actionObj.id = bridgeCallId;
-        console.log('Added bridge call ID to action object:', JSON.stringify(actionObj, null, 2));
+        
+        // Format bridge action according to API specification
+        actionObj.param = {
+          type: "call",
+          id: bridgeCallId
+        };
+        console.log('Added bridge call ID with param format:', JSON.stringify(actionObj, null, 2));
       }
       
       const requestBody = { actions: [actionObj] };
