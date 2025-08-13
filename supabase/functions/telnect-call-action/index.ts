@@ -39,11 +39,12 @@ serve(async (req) => {
     console.log('Request data type:', typeof requestData);
     console.log('Request data keys:', Object.keys(requestData));
     
-    const { callId, action, destination } = requestData;
+    const { callId, action, destination, bridgeCallId } = requestData;
     console.log('=== EXTRACTED PARAMETERS ===');
     console.log('Extracted callId:', callId, '(type:', typeof callId, ')');
     console.log('Extracted action:', action, '(type:', typeof action, ')');
     console.log('Extracted destination:', destination, '(type:', typeof destination, ')');
+    console.log('Extracted bridgeCallId:', bridgeCallId, '(type:', typeof bridgeCallId, ')');
 
     console.log('=== ENVIRONMENT CHECK ===');
     const telnectToken = Deno.env.get('TELNECT_API_TOKEN');
@@ -107,6 +108,16 @@ serve(async (req) => {
       if (destination) {
         actionObj.destination = destination;
         console.log('Added destination to action object:', JSON.stringify(actionObj, null, 2));
+      }
+      
+      // Handle bridge action - requires bridgeCallId parameter
+      if (action === 'bridge') {
+        if (!bridgeCallId) {
+          console.error('ERROR: bridgeCallId is required for bridge action but missing');
+          throw new Error('bridgeCallId is required for bridge action');
+        }
+        actionObj.id = bridgeCallId;
+        console.log('Added bridge call ID to action object:', JSON.stringify(actionObj, null, 2));
       }
       
       const requestBody = { actions: [actionObj] };
