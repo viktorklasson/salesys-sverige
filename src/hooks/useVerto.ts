@@ -23,36 +23,74 @@ export function useVerto() {
   const isLoadedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  const loadVertoScript = useCallback(() => {
+  const loadScripts = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
       if (isLoadedRef.current) {
         resolve();
         return;
       }
 
-      // Check if script is already loaded
-      if (window.hasOwnProperty('Verto')) {
+      // Check if both jQuery and Verto are already loaded
+      if (window.hasOwnProperty('jQuery') && window.hasOwnProperty('Verto')) {
         isLoadedRef.current = true;
         resolve();
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = '/verto.min.js';
-      script.onload = () => {
-        isLoadedRef.current = true;
-        resolve();
+      // Load jQuery first
+      const loadJQuery = () => {
+        return new Promise<void>((jQueryResolve, jQueryReject) => {
+          if (window.hasOwnProperty('jQuery')) {
+            jQueryResolve();
+            return;
+          }
+
+          const jqueryScript = document.createElement('script');
+          jqueryScript.src = '/jquery-2.1.1.min.js';
+          jqueryScript.onload = () => {
+            console.log('jQuery loaded successfully');
+            jQueryResolve();
+          };
+          jqueryScript.onerror = () => {
+            jQueryReject(new Error('Failed to load jQuery script'));
+          };
+          document.head.appendChild(jqueryScript);
+        });
       };
-      script.onerror = () => {
-        reject(new Error('Failed to load Verto script'));
+
+      // Load Verto after jQuery
+      const loadVerto = () => {
+        return new Promise<void>((vertoResolve, vertoReject) => {
+          if (window.hasOwnProperty('Verto')) {
+            vertoResolve();
+            return;
+          }
+
+          const vertoScript = document.createElement('script');
+          vertoScript.src = '/verto.min.js';
+          vertoScript.onload = () => {
+            console.log('Verto loaded successfully');
+            isLoadedRef.current = true;
+            vertoResolve();
+          };
+          vertoScript.onerror = () => {
+            vertoReject(new Error('Failed to load Verto script'));
+          };
+          document.head.appendChild(vertoScript);
+        });
       };
-      document.head.appendChild(script);
+
+      // Load scripts in sequence
+      loadJQuery()
+        .then(() => loadVerto())
+        .then(() => resolve())
+        .catch((error) => reject(error));
     });
   }, []);
 
   const connect = useCallback(async (config: VertoConfig) => {
     try {
-      await loadVertoScript();
+      await loadScripts();
       
       // @ts-ignore - Verto is loaded dynamically
       const verto = new window.Verto({
@@ -83,7 +121,7 @@ export function useVerto() {
       console.error('Error connecting to Verto:', error);
       throw error;
     }
-  }, [loadVertoScript]);
+  }, [loadScripts]);
 
   const disconnect = useCallback(() => {
     if (vertoRef.current) {
