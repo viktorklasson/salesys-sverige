@@ -126,7 +126,7 @@ export const PhoneInterface: React.FC = () => {
 
       // Step 1: Create WebRTC call to establish session - call our own phone line
       console.log('Creating WebRTC session via Verto...');
-      const vertoCall = await call(phoneLineData?.username || 'park', {
+      const vertoCall = await call('park', {
         caller_id_name: 'WebRTC User',
         caller_id_number: phoneLineData?.username || '',
         tag: 'verto-webrtc-call'
