@@ -124,12 +124,12 @@ export const PhoneInterface: React.FC = () => {
       setIsLoading(true);
       setCallState({ status: 'connecting' });
 
-      // Step 1: Call "park" from Verto to get a call ID for bridging
-      console.log('Calling park from Verto...');
-      const vertoCall = await call('park', {
+      // Step 1: Create WebRTC call to establish session - call our own phone line
+      console.log('Creating WebRTC session via Verto...');
+      const vertoCall = await call(phoneLineData?.username || 'park', {
         caller_id_name: 'WebRTC User',
         caller_id_number: phoneLineData?.username || '',
-        tag: 'verto-park-call'
+        tag: 'verto-webrtc-call'
       });
 
       console.log('Verto call created:', vertoCall);
