@@ -14,7 +14,8 @@ export const AudioDeviceSelector: React.FC<AudioDeviceSelectorProps> = ({ classN
     audioDevices, 
     selectedOutputDevice, 
     setAudioOutputDevice, 
-    loadAudioDevices, 
+    loadAudioDevices,
+    testAudioOutput,
     isLoading 
   } = useAudioDevices();
 
@@ -26,22 +27,38 @@ export const AudioDeviceSelector: React.FC<AudioDeviceSelectorProps> = ({ classN
     loadAudioDevices();
   };
 
+  const handleTestAudio = () => {
+    testAudioOutput();
+  };
+
   return (
     <Card className={`p-4 ${className}`}>
-      <div className="space-y-4">
+        <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Volume2 className="h-4 w-4" />
             <h3 className="text-sm font-medium">Audio Output</h3>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex space-x-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleTestAudio}
+              disabled={isLoading || !selectedOutputDevice}
+              title="Test audio output"
+            >
+              🔊
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              title="Refresh devices"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">

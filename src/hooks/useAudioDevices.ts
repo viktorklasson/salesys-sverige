@@ -52,23 +52,72 @@ export const useAudioDevices = () => {
       console.log('Setting audio output device:', deviceId);
       setSelectedOutputDevice(deviceId);
       
-      // Set the sink ID on the audio element if provided
-      if (audioElement && 'setSinkId' in audioElement) {
-        await (audioElement as any).setSinkId(deviceId);
-        console.log('Audio output device set successfully');
-      } else {
-        console.warn('setSinkId not supported or audio element not provided');
+      // Check if setSinkId is supported
+      const testAudio = document.createElement('audio');
+      if (!('setSinkId' in testAudio)) {
+        console.warn('setSinkId not supported in this browser');
+        return;
       }
       
-      // Also set it on the main audio element if it exists
-      const mainAudio = document.getElementById('main_audio') as HTMLAudioElement;
-      if (mainAudio && 'setSinkId' in mainAudio) {
-        await (mainAudio as any).setSinkId(deviceId);
-        console.log('Main audio output device set successfully');
+      // Set the sink ID on the provided audio element
+      if (audioElement) {
+        try {
+          await (audioElement as any).setSinkId(deviceId);
+          console.log('Audio output device set successfully on provided element');
+        } catch (error) {
+          console.error('Error setting sink ID on provided element:', error);
+        }
+      }
+      
+      // Set it on all audio elements that might be used
+      const audioElements = [
+        document.getElementById('main_audio'),
+        document.getElementById('audio_element'),
+        ...Array.from(document.querySelectorAll('audio'))
+      ].filter(Boolean) as HTMLAudioElement[];
+      
+      console.log('Found audio elements:', audioElements.length);
+      
+      for (const audio of audioElements) {
+        try {
+          await (audio as any).setSinkId(deviceId);
+          console.log('Audio output device set on element:', audio.id || 'unnamed');
+        } catch (error) {
+          console.error('Error setting sink ID on element:', audio.id, error);
+        }
       }
       
     } catch (error) {
       console.error('Error setting audio output device:', error);
+    }
+  };
+
+  const testAudioOutput = async () => {
+    try {
+      console.log('Testing audio output...');
+      
+      // Create a test audio element
+      const testAudio = document.createElement('audio');
+      testAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEcAz2Y4OzkdCUFLYPX+tiDNwgVaLTp559TEAxPru/wuGUeCZGTzvPEfCME';
+      testAudio.autoplay = true;
+      testAudio.volume = 0.1; // Low volume test
+      
+      if (selectedOutputDevice && 'setSinkId' in testAudio) {
+        await (testAudio as any).setSinkId(selectedOutputDevice);
+        console.log('Test audio sink ID set to:', selectedOutputDevice);
+      }
+      
+      testAudio.play().then(() => {
+        console.log('Test audio played successfully');
+        setTimeout(() => {
+          testAudio.remove();
+        }, 1000);
+      }).catch(error => {
+        console.error('Test audio play failed:', error);
+      });
+      
+    } catch (error) {
+      console.error('Error testing audio output:', error);
     }
   };
 
@@ -93,6 +142,7 @@ export const useAudioDevices = () => {
     selectedOutputDevice,
     setAudioOutputDevice,
     loadAudioDevices,
+    testAudioOutput,
     isLoading
   };
 };

@@ -38,10 +38,16 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   // Set audio output device when component mounts or device changes
   useEffect(() => {
-    const audioElement = document.getElementById('main_audio') as HTMLAudioElement;
-    if (audioElement && selectedOutputDevice) {
+    const audioElements = [
+      document.getElementById('main_audio'),
+      document.getElementById('audio_element')
+    ].filter(Boolean) as HTMLAudioElement[];
+    
+    if (audioElements.length > 0 && selectedOutputDevice) {
       console.log('Setting audio output device on call interface:', selectedOutputDevice);
-      setAudioOutputDevice(selectedOutputDevice, audioElement);
+      audioElements.forEach(audioElement => {
+        setAudioOutputDevice(selectedOutputDevice, audioElement);
+      });
     }
   }, [selectedOutputDevice, setAudioOutputDevice]);
 
@@ -89,7 +95,25 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
       {/* Hidden Verto container with audio element for output */}
       <div id="verto-phone-container" className="hidden">
-        <audio id="main_audio" autoPlay playsInline controls={false} style={{ display: 'none' }} />
+        <audio 
+          id="main_audio" 
+          autoPlay 
+          playsInline 
+          controls={false} 
+          style={{ display: 'none' }}
+          onLoadedMetadata={() => console.log('Audio metadata loaded')}
+          onCanPlay={() => console.log('Audio can play')}
+          onPlay={() => console.log('Audio started playing')}
+          onError={(e) => console.error('Audio error:', e)}
+        />
+        {/* Additional audio element that Verto might use */}
+        <audio 
+          id="audio_element" 
+          autoPlay 
+          playsInline 
+          controls={false} 
+          style={{ display: 'none' }}
+        />
       </div>
       
       {/* Header with minimize button */}
