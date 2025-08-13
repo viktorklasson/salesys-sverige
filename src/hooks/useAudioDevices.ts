@@ -98,24 +98,50 @@ export const useAudioDevices = () => {
     try {
       console.log('Testing audio output...');
       
-      // Create a test audio element
+      // Create a test audio element with a longer audio file
       const testAudio = document.createElement('audio');
-      testAudio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEcAz2Y4OzkdCUFLYPX+tiDNwgVaLTp559TEAxPru/wuGUeCZGTzvPEfCME';
-      testAudio.autoplay = true;
-      testAudio.volume = 0.1; // Low volume test
+      // Use a longer test tone (5 seconds of 440Hz sine wave)
+      testAudio.src = 'data:audio/wav;base64,UklGRlAxAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSwxAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmEcAz2Y4OzkdCUFLYPX+tiDNwgVaLTp559TEAxPru/wuGUeCZGTzvPEfCMELYDN9daLOggSaLPp56dVEgxKoeHwwmAcAz6Y3+zmdyMGKoLR+NeLOggTaLTo56dWEglGn+LwwWAcBTyZ3+vmeScFKILM99iJOwcVaLXo5aFVEgxIouHwwGEcBDqX3+njeSUFKoHM9tiNOAcVZ7Xo4KJUEgxKpOLvwGEcBjiU3uvh';
+      testAudio.autoplay = false;
+      testAudio.volume = 0.3; // Moderate volume test
+      testAudio.controls = false;
+      
+      // Set duration to 5 seconds
+      testAudio.loop = false;
       
       if (selectedOutputDevice && 'setSinkId' in testAudio) {
         await (testAudio as any).setSinkId(selectedOutputDevice);
         console.log('Test audio sink ID set to:', selectedOutputDevice);
       }
       
+      // Add event listeners for better feedback
+      testAudio.addEventListener('loadeddata', () => {
+        console.log('Test audio loaded, duration:', testAudio.duration);
+      });
+      
+      testAudio.addEventListener('ended', () => {
+        console.log('Test audio finished playing');
+        testAudio.remove();
+      });
+      
+      testAudio.addEventListener('error', (e) => {
+        console.error('Test audio error:', e);
+        testAudio.remove();
+      });
+      
+      // Play the test audio
       testAudio.play().then(() => {
-        console.log('Test audio played successfully');
+        console.log('Test audio started playing - you should hear 5 seconds of audio');
+        
+        // Auto-remove after 6 seconds as fallback
         setTimeout(() => {
-          testAudio.remove();
-        }, 1000);
+          if (testAudio.parentNode) {
+            testAudio.remove();
+          }
+        }, 6000);
       }).catch(error => {
         console.error('Test audio play failed:', error);
+        testAudio.remove();
       });
       
     } catch (error) {
