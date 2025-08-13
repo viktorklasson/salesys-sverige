@@ -82,42 +82,14 @@ export const PhoneInterface: React.FC = () => {
     }
   };
 
-  const getWebSocketCredentials = async () => {
-    try {
-      console.log('Getting WebSocket credentials...');
-      
-      const { data, error } = await supabase.functions.invoke('salesys-proxy', {
-        body: {
-          token: phoneLineData?.username || ''
-        }
-      });
-
-      if (error) {
-        throw new Error(`Failed to get WebSocket credentials: ${error.message}`);
-      }
-
-      console.log('WebSocket credentials received:', data);
-      
-      return data;
-    } catch (error) {
-      console.error('Error getting WebSocket credentials:', error);
-      throw error;
-    }
-  };
-
   const connectToVerto = async (phoneData: PhoneLineData) => {
     try {
-      console.log('Getting WebSocket credentials for Verto...');
-      
-      // Get WebSocket credentials from Telnect API
-      const wsCredentials = await getWebSocketCredentials();
-      
-      console.log('Connecting to Verto with credentials...');
+      console.log('Connecting to Verto...');
       
       await connect({
-        wsURL: wsCredentials.url,
-        login: wsCredentials.username,
-        passwd: wsCredentials.password,
+        wsURL: phoneData.websocket_url,
+        login: phoneData.username,
+        passwd: phoneData.password,
         login_token: '',
         userVariables: {},
         ringFile: 'https://s3.amazonaws.com/evolux-files/ringtone/ringtone_us_uk.mp3',
@@ -167,7 +139,7 @@ export const PhoneInterface: React.FC = () => {
       console.log('Creating outbound call...');
       const { data: outboundCallData, error: outboundError } = await supabase.functions.invoke('telnect-create-call', {
         body: {
-          caller: '+46752751354', // Use the fixed caller number
+          caller: phoneLineData?.username || '',
           number: phoneNumber,
           notifyUrl: `${window.location.origin}/api/call-events`
         }

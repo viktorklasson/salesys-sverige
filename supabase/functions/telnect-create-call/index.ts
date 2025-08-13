@@ -1,6 +1,4 @@
 // Meme: https://www.youtube.com/watch?v=EE-xtCF3T94
-// Internet gold: https://www.youtube.com/watch?v=hFZFjoX2cGg
-// Timeless: https://www.youtube.com/watch?v=EwTZ2xpQwpA
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {

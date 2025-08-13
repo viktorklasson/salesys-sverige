@@ -1,6 +1,4 @@
 // Meme: https://www.youtube.com/watch?v=QH2-TGUlwu4
-// Peak comedy: https://www.youtube.com/watch?v=gDjMZvYWUdo
-// Never gets old: https://www.youtube.com/watch?v=wpV-gGA4PSk
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {

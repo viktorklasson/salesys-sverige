@@ -1,11 +1,10 @@
 // Meme: https://www.youtube.com/watch?v=oHg5SJYRHA0
-// Absolute unit: https://www.youtube.com/watch?v=F57P9C4SAW4
-// Masterpiece: https://www.youtube.com/watch?v=K8UV7SAhvG4
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Credentials': 'true'
 }
 
 serve(async (req) => {
@@ -14,50 +13,119 @@ serve(async (req) => {
   }
 
   try {
-    const { token } = await req.json()
+    const { url, method = 'GET', data, headers = {} } = await req.json()
     
-    if (!token) {
-      throw new Error('Token is required')
+    if (!url) {
+      return new Response(
+        JSON.stringify({ error: 'URL is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
-    console.log('Getting WebSocket credentials for token:', token.substring(0, 10) + '...')
+    console.log('Proxying request to:', url, 'with method:', method)
 
-    // Get WebSocket credentials from Telnect API
-    const response = await fetch('https://app.salesys.se/api/dial/easytelecom-v1/login', {
-      method: 'GET',
+    // Forward the request to the target URL
+    const requestOptions: RequestInit = {
+      method,
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...headers
+      },
+      credentials: 'include'
+    }
+
+    if (data && (method === 'POST' || method === 'PUT')) {
+      requestOptions.body = JSON.stringify(data)
+    }
+
+    const response = await fetch(url, requestOptions)
+    const responseData = await response.text()
+
+    console.log('Response status:', response.status)
+    console.log('Response data:', responseData)
+
+    // Get cookies from the response
+    let setCookieHeaders: string[] = []
+    
+    // Try the newer getSetCookie method first
+    if (response.headers.getSetCookie) {
+      setCookieHeaders = response.headers.getSetCookie()
+    } else {
+      // Fallback to manual extraction
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') {
+          setCookieHeaders.push(value)
+        }
+      })
+    }
+    
+    console.log('Original Set-Cookie headers:', setCookieHeaders)
+    
+    // Extract the bearer token from cookies
+    let bearerToken = null
+    setCookieHeaders.forEach(cookie => {
+      if (cookie.startsWith('s2_utoken=')) {
+        const tokenMatch = cookie.match(/s2_utoken=([^;]+)/)
+        if (tokenMatch) {
+          bearerToken = tokenMatch[1]
+          console.log('Extracted bearer token:', bearerToken.substring(0, 20) + '...')
+        }
       }
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Telnect API error:', response.status, errorText)
-      throw new Error(`Telnect API error: ${response.status} - ${errorText}`)
+    // Prepare response headers
+    const responseHeaders = new Headers({
+      ...corsHeaders,
+      'Content-Type': response.headers.get('content-type') || 'application/json'
+    })
+
+    // Still try to set cookies for compatibility
+    setCookieHeaders.forEach(cookie => {
+      console.log('Processing cookie:', cookie)
+      
+      // Modify cookie to work with our domain
+      let modifiedCookie = cookie
+      
+      // Remove domain restrictions that might prevent cookie setting
+      modifiedCookie = modifiedCookie.replace(/;\s*Domain=[^;]+/gi, '')
+      
+      // Remove Secure flag if present (since we might be on http in development)
+      modifiedCookie = modifiedCookie.replace(/;\s*Secure/gi, '')
+      
+      // Add SameSite=None for cross-origin requests
+      if (!modifiedCookie.includes('SameSite')) {
+        modifiedCookie += '; SameSite=None'
+      }
+      
+      console.log('Modified cookie:', modifiedCookie)
+      responseHeaders.append('Set-Cookie', modifiedCookie)
+    })
+
+    // Return response with bearer token included in the response body for login requests
+    let finalResponseData = responseData
+    if (bearerToken && url.includes('/login')) {
+      console.log('Including bearer token in response data for login request')
+      finalResponseData = JSON.stringify({
+        status: responseData,
+        bearerToken: bearerToken
+      })
     }
 
-    const credentials = await response.json()
-    console.log('WebSocket credentials received:', credentials)
-
-    return new Response(
-      JSON.stringify({ success: true, data: credentials }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    )
+    return new Response(finalResponseData, {
+      status: response.status,
+      headers: responseHeaders
+    })
 
   } catch (error) {
-    console.error('Function error:', error)
+    console.error('Proxy error:', error)
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message 
-      }),
+      JSON.stringify({ error: 'Proxy request failed', details: error.message }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
