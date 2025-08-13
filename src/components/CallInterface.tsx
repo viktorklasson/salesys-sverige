@@ -76,8 +76,10 @@ export function CallInterface({ callState, onHangUp, onMinimize }: CallInterface
 
   return (
     <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      {/* Hidden Verto container */}
-      <div id="verto-phone-container" className="hidden"></div>
+      {/* Hidden Verto container with audio element for output */}
+      <div id="verto-phone-container" className="hidden">
+        <audio id="main_audio" autoPlay playsInline controls={false} style={{ display: 'none' }} />
+      </div>
       
       {/* Header with minimize button */}
       <div className="flex justify-between items-center p-4 border-b">
