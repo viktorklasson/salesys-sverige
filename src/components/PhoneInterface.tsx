@@ -20,9 +20,11 @@ interface CallState {
   status: 'idle' | 'connecting' | 'calling' | 'answered' | 'hangup' | 'other_hangup';
   callId?: string;
   vertoCallId?: string;
+  vertoApiCallId?: string; // The API call ID from verto
   outboundCallId?: string;
   startTime?: Date;
   phoneNumber?: string;
+  vertoCallRef?: any; // Reference to the verto call dialog
 }
 
 export const PhoneInterface: React.FC = () => {
@@ -160,16 +162,17 @@ export const PhoneInterface: React.FC = () => {
       console.log('Outbound call created:', outboundCallData);
       const outboundCallId = outboundCallData.data?.id || outboundCallData.id;
 
-      // Update call state with both call IDs
+      // Update call state with both call IDs and store verto call reference
       setCallState({
         status: 'calling',
         vertoCallId: vertoCallId,
         outboundCallId: outboundCallId,
-        phoneNumber: phoneNumber
+        phoneNumber: phoneNumber,
+        vertoCallRef: vertoCall // Store reference to get API call ID later
       });
 
       // Start polling for call status - bridging will happen when call is answered
-      startCallStatusPolling(outboundCallId, vertoCallId);
+      startCallStatusPolling(outboundCallId, vertoCall);
 
       toast({
         title: "Success",
@@ -189,7 +192,7 @@ export const PhoneInterface: React.FC = () => {
     }
   };
 
-  const startCallStatusPolling = (callId: string, vertoCallId: string | undefined) => {
+  const startCallStatusPolling = (callId: string, vertoCall: any) => {
     // Clear any existing polling
     if (statusPollingRef.current) {
       clearInterval(statusPollingRef.current);
@@ -212,16 +215,19 @@ export const PhoneInterface: React.FC = () => {
           // Bridge the calls when outbound call is answered
           console.log('Call answered, bridging calls...');
           
-          if (vertoCallId) {
+          // Get the API call ID from the verto call
+          const vertoApiCallId = vertoCall?.apiCallId;
+          
+          if (vertoApiCallId) {
             try {
-              console.log('Bridging calls:', { vertoCallId, outboundCallId: callId });
+              console.log('Bridging calls:', { vertoApiCallId, outboundCallId: callId });
               
-              // Bridge the calls using the telnect-call-action function
+              // Bridge the outbound call with the verto API call
               const { data: bridgeResult, error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
                 body: {
-                  callId: vertoCallId, // The verto call (park) that will be bridged
+                  callId: callId, // The outbound call that will be bridged 
                   action: 'bridge',
-                  bridgeCallId: callId // The outbound call to bridge with
+                  bridgeCallId: vertoApiCallId // The verto API call to bridge with
                 }
               });
               
@@ -236,7 +242,9 @@ export const PhoneInterface: React.FC = () => {
               // Continue with call anyway, bridging failure shouldn't end the call
             }
           } else {
-            console.error('Cannot bridge calls - missing verto call ID');
+            console.error('Cannot bridge calls - missing verto API call ID. Waiting for verto.answer...');
+            // Don't set status to answered yet, keep polling until we get the API call ID
+            return;
           }
 
           setCallState(prev => ({ 

@@ -172,12 +172,13 @@ export function useVerto() {
         onmessage: (verto: any, dialog: any, msg: any, data: any) => {
           console.log('Verto message:', msg, data);
           
-          // Capture when we get a call created response
-          if (msg === 'verto.invite' && data?.callID) {
-            console.log('Verto call created with ID:', data.callID);
-            // Store the callID for later use
+          // Capture the API call ID when we get verto.answer response
+          if (msg === 'verto.answer' && data?.variables?.verto_svar_api_callid) {
+            console.log('Verto API call ID captured:', data.variables.verto_svar_api_callid);
+            // Store the API call ID on the dialog for later use
             if (dialog) {
-              dialog.vertoCallId = data.callID;
+              dialog.apiCallId = data.variables.verto_svar_api_callid;
+              console.log('Stored API call ID on dialog:', dialog.apiCallId);
             }
           }
         }
