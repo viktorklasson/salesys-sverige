@@ -92,14 +92,19 @@ export function useVerto() {
     try {
       await loadScripts();
       
-      // Debug what's available on window
-      console.log('Window jQuery:', typeof (window as any).jQuery);
-      console.log('Window Verto:', typeof (window as any).Verto);
-      console.log('Window object keys containing "verto":', Object.keys(window).filter(key => key.toLowerCase().includes('verto')));
-      console.log('Verto object:', (window as any).Verto);
       
-      // @ts-ignore - Verto is loaded dynamically
-      const verto = new window.Verto({
+      // Debug what's available on window and jQuery
+      console.log('Window jQuery:', typeof (window as any).jQuery);
+      console.log('jQuery.verto:', typeof (window as any).jQuery?.verto);
+      console.log('$.verto:', typeof (window as any).$?.verto);
+      
+      // Try to find Verto constructor - it's typically under jQuery
+      const VertoConstructor = (window as any).jQuery?.verto || (window as any).$?.verto;
+      if (!VertoConstructor) {
+        throw new Error('Verto constructor not found. Make sure verto.min.js is loaded properly.');
+      }
+
+      const verto = new VertoConstructor({
         login: config.login,
         passwd: config.passwd,
         socketUrl: config.wsURL,
