@@ -171,12 +171,22 @@ export function useVerto() {
       throw new Error('Verto not connected');
     }
 
-    return vertoRef.current.newCall({
-      destination_number: destination,
-      caller_id_name: options.caller_id_name || 'WebRTC User',
-      caller_id_number: options.caller_id_number || 'anonymous',
-      tag: options.tag || 'default'
-    });
+    console.log('Creating call with Verto:', { destination, options });
+    
+    try {
+      const callResult = vertoRef.current.newCall({
+        destination_number: destination,
+        caller_id_name: options.caller_id_name || 'WebRTC User',
+        caller_id_number: options.caller_id_number || 'anonymous',
+        tag: options.tag || 'default'
+      });
+      
+      console.log('Verto newCall result:', callResult);
+      return callResult;
+    } catch (error) {
+      console.error('Error creating Verto call:', error);
+      throw error;
+    }
   }, []);
 
   const hangup = useCallback((callId?: string) => {

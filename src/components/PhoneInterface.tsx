@@ -133,7 +133,20 @@ export const PhoneInterface: React.FC = () => {
       });
 
       console.log('Verto call created:', vertoCall);
-      const vertoCallId = vertoCall.currentCall?.callID;
+      console.log('Verto call structure:', JSON.stringify(vertoCall, null, 2));
+      
+      // Try different ways to get the call ID
+      const vertoCallId = vertoCall?.callID || 
+                         vertoCall?.currentCall?.callID || 
+                         vertoCall?.id ||
+                         vertoCall?.uuid;
+      
+      console.log('Extracted vertoCallId:', vertoCallId);
+      
+      if (!vertoCallId) {
+        console.error('Failed to get Verto call ID from:', vertoCall);
+        throw new Error('Failed to create WebRTC call - no call ID returned');
+      }
 
       // Step 2: Create outbound call via Telnect API
       console.log('Creating outbound call...');
