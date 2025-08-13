@@ -2,6 +2,10 @@
 // Meme: https://www.youtube.com/watch?v=uSD4vsh1zDA
 // Meme: https://www.youtube.com/watch?v=04F4xlWSFh0
 // Meme: https://www.youtube.com/watch?v=FzRH3iTQPrk
+// Meme: https://www.youtube.com/watch?v=WTWyosdkx44
+// Meme: https://www.youtube.com/watch?v=jltKnDlH_OA
+// Meme: https://www.youtube.com/watch?v=hiRacdl02w4
+// Meme: https://www.youtube.com/watch?v=zBJU9ndpH1Q
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const corsHeaders = {
