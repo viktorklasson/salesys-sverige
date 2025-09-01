@@ -18,9 +18,9 @@ const DialGroupCard: React.FC<DialGroupCardProps> = ({
   isLoading
 }) => {
   const summaryData = summary?.summary || dialGroup.contactSummaryCache;
-  const totalContacts = summaryData.contactCount;
-  const bearbetadeContacts = summaryData.reservedContactCount;
-  const invantarContacts = summaryData.quarantinedContactCount;
+  const totalContacts = summaryData?.contactCount || 0;
+  const bearbetadeContacts = summaryData?.reservedContactCount || 0;
+  const invantarContacts = summaryData?.quarantinedContactCount || 0;
   
   const bearbetadePercentage = totalContacts > 0 ? (bearbetadeContacts / totalContacts) * 100 : 0;
   const invantarPercentage = totalContacts > 0 ? (invantarContacts / totalContacts) * 100 : 0;
@@ -87,13 +87,13 @@ const DialGroupCard: React.FC<DialGroupCardProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-500 font-light">Bearbetade</span>
-                <span className="text-gray-400 font-thin">{bearbetadePercentage.toFixed(1)}%</span>
+                <span className="text-gray-400 font-thin">{(bearbetadePercentage || 0).toFixed(1)}%</span>
               </div>
               <Progress value={bearbetadePercentage} className="h-1" />
               
               <div className="flex items-center justify-between text-xs">
                 <span className="text-gray-500 font-light">Inväntar återkoppling</span>
-                <span className="text-gray-400 font-thin">{invantarPercentage.toFixed(1)}%</span>
+                <span className="text-gray-400 font-thin">{(invantarPercentage || 0).toFixed(1)}%</span>
               </div>
               <Progress value={invantarPercentage} className="h-1 [&>div]:bg-orange-500" />
             </div>

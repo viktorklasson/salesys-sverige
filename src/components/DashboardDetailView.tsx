@@ -163,6 +163,11 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
   };
 
   const formatValue = (value: number, unit?: string): string => {
+    // Handle null/undefined values
+    if (value == null || isNaN(value)) {
+      return '0';
+    }
+    
     if (unit === 'milliseconds') {
       const totalSeconds = Math.floor(value / 1000);
       const hours = Math.floor(totalSeconds / 3600);
