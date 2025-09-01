@@ -116,19 +116,7 @@ const DashboardDetailView: React.FC<DashboardDetailViewProps> = ({
   const updateGroupBy = async (newGroupBy: GroupByOption) => {
     setUpdatingGroupBy(true);
     try {
-      const response = await fetch(`https://salesys.se/api/tools/proxy.php?url=${encodeURIComponent(`https://app.salesys.se/api/users/dashboards-v1/${dashboard.id}`)}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${salesysApi.getBearerToken()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ groupBy: newGroupBy })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to update groupBy: ${response.status}`);
-      }
-
+      await salesysApi.updateDashboardGroupBy(dashboard.id, newGroupBy);
       setGroupBy(newGroupBy);
       await loadDashboardResults();
     } catch (error) {
