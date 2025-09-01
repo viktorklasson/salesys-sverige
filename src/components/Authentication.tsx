@@ -139,15 +139,24 @@ export class AuthUtils {
     try {
       console.log('Attempting login via edge function...');
       
-      const response = await supabase.functions.invoke('salesys-proxy', {
-        body: {
-          url: 'https://app.salesys.se/api/users/login-v1',
-          method: 'POST',
-          data: loginData,
-          headers: {
-            'Content-Type': 'application/json',
-          }
+      const loginUrl = 'https://app.salesys.se/api/users/login-v1';
+      console.log('Login URL being used:', loginUrl);
+      console.log('Login URL type:', typeof loginUrl);
+      console.log('Login URL length:', loginUrl.length);
+      
+      const requestBody = {
+        url: loginUrl,
+        method: 'POST',
+        data: loginData,
+        headers: {
+          'Content-Type': 'application/json',
         }
+      };
+      
+      console.log('Full request body being sent:', JSON.stringify(requestBody, null, 2));
+      
+      const response = await supabase.functions.invoke('salesys-proxy', {
+        body: requestBody
       });
       
       console.log('Login response received:', response);

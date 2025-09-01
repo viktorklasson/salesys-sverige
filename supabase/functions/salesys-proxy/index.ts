@@ -26,7 +26,10 @@ serve(async (req) => {
   }
 
   try {
-    const { url, method = 'GET', data, headers = {} } = await req.json()
+    const requestBody = await req.json()
+    console.log('Full request body received:', JSON.stringify(requestBody, null, 2))
+    
+    const { url, method = 'GET', data, headers = {} } = requestBody
     
     if (!url) {
       return new Response(
@@ -38,6 +41,9 @@ serve(async (req) => {
       )
     }
 
+    console.log('Extracted URL:', url)
+    console.log('URL type:', typeof url)
+    console.log('URL length:', url ? url.length : 'N/A')
     console.log('Proxying request to:', url, 'with method:', method)
 
     // Forward the request to the target URL
