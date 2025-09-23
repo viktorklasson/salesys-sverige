@@ -615,6 +615,7 @@ export const PhoneInterface: React.FC = () => {
               {callState.status === 'idle' ? (
                 <Button
                   onClick={handleCall}
+                  {...{ onclick: "startOutgoingCall()" } as any}
                   disabled={!isConnected || !phoneNumber.trim() || isLoading}
                   className="flex-1"
                 >
