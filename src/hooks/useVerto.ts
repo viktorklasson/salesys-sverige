@@ -23,6 +23,77 @@ export function useVerto() {
   const isLoadedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
 
+  // Helper functions for audio element management
+  const ensureAudioElementsExist = useCallback(() => {
+    console.log('🔧 Ensuring audio elements exist...');
+    
+    let container = document.getElementById('verto-audio-container');
+    if (!container) {
+      console.log('🔧 Creating audio container...');
+      container = document.createElement('div');
+      container.id = 'verto-audio-container';
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.width = '1px';
+      container.style.height = '1px';
+      document.body.appendChild(container);
+    }
+
+    let mainAudio = document.getElementById('main_audio') as HTMLAudioElement;
+    if (!mainAudio) {
+      console.log('🔧 Creating main_audio element...');
+      mainAudio = document.createElement('audio');
+      mainAudio.id = 'main_audio';
+      mainAudio.autoplay = true;
+      (mainAudio as any).playsInline = true;
+      mainAudio.controls = false;
+      mainAudio.volume = 1.0;
+      
+      mainAudio.addEventListener('loadedmetadata', () => {
+        console.log('🎵 main_audio: metadata loaded');
+      });
+      
+      mainAudio.addEventListener('canplay', () => {
+        console.log('🎵 main_audio: can play');
+        if (mainAudio.srcObject) {
+          mainAudio.play().catch(e => console.error('❌ main_audio play failed:', e));
+        }
+      });
+      
+      container.appendChild(mainAudio);
+    }
+
+    let audioElement = document.getElementById('audio_element') as HTMLAudioElement;
+    if (!audioElement) {
+      console.log('🔧 Creating audio_element...');
+      audioElement = document.createElement('audio');
+      audioElement.id = 'audio_element';
+      audioElement.autoplay = true;
+      (audioElement as any).playsInline = true;
+      audioElement.controls = false;
+      audioElement.muted = true;
+      
+      container.appendChild(audioElement);
+    }
+
+    console.log('✅ Audio elements ready:', {
+      container: !!container,
+      mainAudio: !!mainAudio,
+      audioElement: !!audioElement
+    });
+    
+    return { container, mainAudio, audioElement };
+  }, []);
+
+  const cleanupAudioElements = useCallback(() => {
+    console.log('🧹 Cleaning up audio elements...');
+    const container = document.getElementById('verto-audio-container');
+    if (container) {
+      container.remove();
+      console.log('✅ Audio elements cleaned up');
+    }
+  }, []);
+
   const loadScripts = useCallback(() => {
     return new Promise<void>((resolve, reject) => {
       if (isLoadedRef.current) {
@@ -166,31 +237,81 @@ export function useVerto() {
           setIsConnected(false);
         },
         onDialogState: (dialog: any) => {
-          console.log('Verto dialog state:', dialog.state);
-          console.log('Verto dialog callID:', dialog.callID);
+          console.log('🎯 Verto dialog state change:', dialog.state, 'CallID:', dialog.callID);
+          
+          // Handle dialog state changes for better WebSocket message handling
+          switch (dialog.state) {
+            case 'trying':
+              console.log('📞 Call is trying...');
+              break;
+            case 'early':
+              console.log('📞 Call early media');
+              break;
+            case 'active':
+              console.log('✅ Call is active (answered)');
+              // Ensure audio elements are ready when call becomes active
+              ensureAudioElementsExist();
+              break;
+            case 'hangup':
+              console.log('📞 Call hangup detected');
+              // Dispatch custom event for hangup
+              window.dispatchEvent(new CustomEvent('verto-hangup', { 
+                detail: { callID: dialog.callID, dialog } 
+              }));
+              break;
+            case 'destroy':
+              console.log('💀 Call destroyed');
+              // Clean up audio elements if needed
+              cleanupAudioElements();
+              break;
+          }
         },
         onmessage: (verto: any, dialog: any, msg: any, data: any) => {
-          console.log('Verto message:', msg, data);
+          console.log('📨 Verto message:', msg, data);
           
-          // Capture the API call ID when we get verto.answer response
-          if (msg === 'verto.answer' && data?.variables?.verto_svar_api_callid) {
-            console.log('Verto API call ID captured:', data.variables.verto_svar_api_callid);
-            console.log('Dialog object received:', dialog);
-            console.log('Dialog callID:', dialog?.callID);
-            
-            // Store the API call ID on the dialog for later use
-            if (dialog) {
-              dialog.apiCallId = data.variables.verto_svar_api_callid;
-              console.log('Stored API call ID on dialog:', dialog.apiCallId);
-              console.log('Dialog after API call ID set:', dialog);
-            }
-            
-            // Also store on the verto instance for global access
-            if (vertoRef.current) {
-              vertoRef.current.lastApiCallId = data.variables.verto_svar_api_callid;
-              vertoRef.current.lastDialogWithApiCallId = dialog;
-              console.log('Stored API call ID globally on verto instance');
-            }
+          // Handle different Verto messages
+          switch (msg) {
+            case 'verto.invite':
+              console.log('📞 Incoming call invite');
+              ensureAudioElementsExist();
+              break;
+              
+            case 'verto.answer':
+              console.log('✅ Call answered');
+              ensureAudioElementsExist();
+              
+              // Capture the API call ID when we get verto.answer response
+              if (data?.variables?.verto_svar_api_callid) {
+                console.log('🆔 Verto API call ID captured:', data.variables.verto_svar_api_callid);
+                
+                // Store the API call ID on the dialog for later use
+                if (dialog) {
+                  dialog.apiCallId = data.variables.verto_svar_api_callid;
+                  console.log('💾 Stored API call ID on dialog:', dialog.apiCallId);
+                }
+                
+                // Also store on the verto instance for global access
+                if (vertoRef.current) {
+                  vertoRef.current.lastApiCallId = data.variables.verto_svar_api_callid;
+                  vertoRef.current.lastDialogWithApiCallId = dialog;
+                  console.log('💾 Stored API call ID globally on verto instance');
+                }
+              }
+              break;
+              
+            case 'verto.bye':
+              console.log('👋 Call bye message');
+              window.dispatchEvent(new CustomEvent('verto-bye', { 
+                detail: { callID: dialog?.callID, dialog, data } 
+              }));
+              break;
+              
+            case 'verto.hangup':
+              console.log('📞 Call hangup message');
+              window.dispatchEvent(new CustomEvent('verto-hangup', { 
+                detail: { callID: dialog?.callID, dialog, data } 
+              }));
+              break;
           }
         }
       });
