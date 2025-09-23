@@ -41,6 +41,60 @@ export const PhoneInterface: React.FC = () => {
   const { verto, connect, disconnect, call, hangup } = useVerto();
   const { selectedOutputDevice, setAudioOutputDevice, audioDevices } = useAudioDevices();
 
+  // Ensure Verto tag containers exist and auto-play any audio elements Verto injects
+  const ensureTagContainer = (id: string) => {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = id;
+      el.style.position = 'absolute';
+      el.style.left = '-9999px';
+      el.style.width = '1px';
+      el.style.height = '1px';
+      document.body.appendChild(el);
+      console.log(`🔧 Created Verto tag container #${id}`);
+    }
+
+    // Observe for audio elements and force proper playback behavior
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((m) => {
+        m.addedNodes.forEach(async (node) => {
+          if (node instanceof HTMLAudioElement) {
+            const audio = node as HTMLAudioElement;
+            console.log(`🎧 Detected Verto-injected <audio> in #${id}`, audio);
+            (audio as any).playsInline = true;
+            audio.autoplay = true;
+            audio.muted = false;
+            audio.volume = 1.0;
+
+            // Try assign sink if supported and selected
+            if (selectedOutputDevice && typeof (audio as any).setSinkId === 'function') {
+              try {
+                await (audio as any).setSinkId(selectedOutputDevice);
+                console.log('✅ Applied sinkId to Verto audio:', selectedOutputDevice);
+              } catch (e) {
+                console.warn('⚠️ Failed to set sinkId on Verto audio:', e);
+              }
+            }
+
+            const tryPlay = () => audio.play().catch(() => {});
+            audio.addEventListener('canplay', tryPlay);
+            tryPlay();
+
+            const enableAudio = () => {
+              audio.play().catch(() => {});
+            };
+            document.addEventListener('click', enableAudio, { once: true });
+            document.addEventListener('touchstart', enableAudio, { once: true });
+          }
+        });
+      });
+    });
+
+    observer.observe(el, { childList: true, subtree: true });
+    return el;
+  };
+
   // Create phone line when component mounts
   useEffect(() => {
     createPhoneLine();
@@ -90,6 +144,9 @@ export const PhoneInterface: React.FC = () => {
   const connectToVerto = async (phoneData: PhoneLineData) => {
     try {
       console.log('Connecting to Verto...');
+
+      // Ensure tag container exists for Verto to attach its media elements
+      ensureTagContainer('phone-interface');
       
       await connect({
         wsURL: phoneData.websocket_url,
@@ -221,6 +278,10 @@ export const PhoneInterface: React.FC = () => {
 
       // STEP 3: Create WebRTC session via Verto
       console.log('📞 Creating Verto WebRTC call...');
+
+      // Ensure call tag exists for this specific call
+      ensureTagContainer('verto-webrtc-call');
+
       const vertoCall = call('park', {
         caller_id_name: 'WebRTC User',
         caller_id_number: phoneLineData?.username || '',
