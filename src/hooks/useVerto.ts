@@ -226,93 +226,65 @@ export function useVerto() {
         login: config.login,
         passwd: config.passwd,
         socketUrl: config.wsURL,
+        iceServers: true,
         tag: config.tag,
         ringFile: config.ringFile,
-        onWSConnect: () => {
-          console.log('Verto WebSocket connected');
+        onWSLogin: () => {
+          console.log('✅ Verto WebSocket logged in');
           setIsConnected(true);
         },
         onWSClose: () => {
-          console.log('Verto WebSocket closed');
+          console.log('❌ Verto WebSocket closed');
           setIsConnected(false);
         },
         onDialogState: (dialog: any) => {
           console.log('🎯 Verto dialog state change:', dialog.state, 'CallID:', dialog.callID);
           
-          // Handle dialog state changes for better WebSocket message handling
-          switch (dialog.state) {
-            case 'trying':
-              console.log('📞 Call is trying...');
-              break;
-            case 'early':
-              console.log('📞 Call early media');
-              break;
-            case 'active':
-              console.log('✅ Call is active (answered)');
-              // Ensure audio elements are ready when call becomes active
-              ensureAudioElementsExist();
-              break;
-            case 'hangup':
-              console.log('📞 Call hangup detected');
-              // Dispatch custom event for hangup
-              window.dispatchEvent(new CustomEvent('verto-hangup', { 
-                detail: { callID: dialog.callID, dialog } 
-              }));
-              break;
-            case 'destroy':
-              console.log('💀 Call destroyed');
-              // Clean up audio elements if needed
-              cleanupAudioElements();
-              break;
+          // Check for verto_svar_api_callid in params
+          if (dialog.params?.variables?.verto_svar_api_callid) {
+            const apiCallId = dialog.params.variables.verto_svar_api_callid;
+            console.log('🆔 Got verto_svar_api_callid from dialog:', apiCallId);
+            
+            // Store on dialog and verto instance
+            dialog.vertoApiCallId = apiCallId;
+            if (vertoRef.current) {
+              vertoRef.current.parkCallId = apiCallId;
+              vertoRef.current.parkDialog = dialog;
+            }
+            
+            // Dispatch event with the API call ID
+            window.dispatchEvent(new CustomEvent('verto-park-ready', { 
+              detail: { apiCallId, dialog } 
+            }));
+          }
+          
+          // Handle dialog state changes
+          if (dialog.state === 'active') {
+            console.log('✅ Call is active');
+            ensureAudioElementsExist();
+          } else if (dialog.state === 'hangup') {
+            console.log('📞 Call hangup detected');
+            window.dispatchEvent(new CustomEvent('verto-hangup', { 
+              detail: { callID: dialog.callID, dialog } 
+            }));
+          } else if (dialog.state === 'destroy') {
+            console.log('💀 Call destroyed');
           }
         },
-        onmessage: (verto: any, dialog: any, msg: any, data: any) => {
-          console.log('📨 Verto message:', msg, data);
+        onRemoteStream: (stream: any) => {
+          console.log('🎵 Remote stream received:', stream);
+        },
+        onMessage: (verto: any, dialog: any, msg: any) => {
+          console.log('📨 Verto onMessage:', msg, dialog);
           
-          // Handle different Verto messages
-          switch (msg) {
-            case 'verto.invite':
-              console.log('📞 Incoming call invite');
-              ensureAudioElementsExist();
-              break;
-              
-            case 'verto.answer':
-              console.log('✅ Call answered');
-              ensureAudioElementsExist();
-              
-              // Capture the API call ID when we get verto.answer response
-              if (data?.variables?.verto_svar_api_callid) {
-                console.log('🆔 Verto API call ID captured:', data.variables.verto_svar_api_callid);
-                
-                // Store the API call ID on the dialog for later use
-                if (dialog) {
-                  dialog.apiCallId = data.variables.verto_svar_api_callid;
-                  console.log('💾 Stored API call ID on dialog:', dialog.apiCallId);
-                }
-                
-                // Also store on the verto instance for global access
-                if (vertoRef.current) {
-                  vertoRef.current.lastApiCallId = data.variables.verto_svar_api_callid;
-                  vertoRef.current.lastDialogWithApiCallId = dialog;
-                  console.log('💾 Stored API call ID globally on verto instance');
-                }
-              }
-              break;
-              
-            case 'verto.bye':
-              console.log('👋 Call bye message');
-              window.dispatchEvent(new CustomEvent('verto-bye', { 
-                detail: { callID: dialog?.callID, dialog, data } 
-              }));
-              break;
-              
-            case 'verto.hangup':
-              console.log('📞 Call hangup message');
-              window.dispatchEvent(new CustomEvent('verto-hangup', { 
-                detail: { callID: dialog?.callID, dialog, data } 
-              }));
-              break;
+          // Create park call when client is ready
+          if (msg.name === 'clientReady') {
+            console.log('🚀 Client ready - creating park call');
+            window.dispatchEvent(new CustomEvent('verto-client-ready'));
           }
+        },
+        onEvent: (verto: any, event: any, data: any) => {
+          console.log('📡 Verto onEvent:', event, data);
         }
       });
 
@@ -342,14 +314,13 @@ export function useVerto() {
     try {
       const callResult = vertoRef.current.newCall({
         destination_number: destination,
-        caller_id_name: options.caller_id_name || 'WebRTC User',
-        caller_id_number: options.caller_id_number || 'anonymous',
-        tag: options.tag || 'default'
+        caller_id_name: options.caller_id_name || null,
+        caller_id_number: options.caller_id_number || null,
+        useStereo: false,
+        useVideo: false
       });
       
       console.log('Verto newCall result:', callResult);
-      console.log('Verto newCall result type:', typeof callResult);
-      console.log('Verto newCall result keys:', callResult ? Object.keys(callResult) : 'null');
       
       return callResult;
     } catch (error) {

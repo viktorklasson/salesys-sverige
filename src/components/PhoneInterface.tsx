@@ -10,12 +10,11 @@ import { AudioDeviceSelector } from './AudioDeviceSelector';
 import { useAudioDevices } from '@/hooks/useAudioDevices';
 import { useVerto } from '@/hooks/useVerto';
 
-interface PhoneLineData {
+interface SalesysLoginData {
   username: string;
   password: string;
   domain: string;
-  websocket_url: string;
-  expires: string;
+  url: string;
 }
 
 interface CallState {
@@ -32,108 +31,81 @@ interface CallState {
 export const PhoneInterface: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isConnected, setIsConnected] = useState(false);
-  const [phoneLineData, setPhoneLineData] = useState<PhoneLineData | null>(null);
+  const [loginData, setLoginData] = useState<SalesysLoginData | null>(null);
   const [callState, setCallState] = useState<CallState>({ status: 'idle' });
   const [isLoading, setIsLoading] = useState(false);
-  const statusPollingRef = useRef<NodeJS.Timeout | null>(null);
+  const parkCallIdRef = useRef<string | null>(null);
   const { toast } = useToast();
   
   const { verto, connect, disconnect, call, hangup } = useVerto();
   const { selectedOutputDevice, setAudioOutputDevice, audioDevices } = useAudioDevices();
 
-  // Ensure Verto tag containers exist and auto-play any audio elements Verto injects
-  const ensureTagContainer = (id: string) => {
-    let el = document.getElementById(id);
-    if (!el) {
-      el = document.createElement('div');
-      el.id = id;
-      el.style.position = 'absolute';
-      el.style.left = '-9999px';
-      el.style.width = '1px';
-      el.style.height = '1px';
-      document.body.appendChild(el);
-      console.log(`🔧 Created Verto tag container #${id}`);
-    }
-
-    // Observe for audio elements and force proper playback behavior
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((m) => {
-        m.addedNodes.forEach(async (node) => {
-          if (node instanceof HTMLAudioElement) {
-            const audio = node as HTMLAudioElement;
-            console.log(`🎧 Detected Verto-injected <audio> in #${id}`, audio);
-            (audio as any).playsInline = true;
-            audio.autoplay = true;
-            audio.muted = false;
-            audio.volume = 1.0;
-
-            // Try assign sink if supported and selected
-            if (selectedOutputDevice && typeof (audio as any).setSinkId === 'function') {
-              try {
-                await (audio as any).setSinkId(selectedOutputDevice);
-                console.log('✅ Applied sinkId to Verto audio:', selectedOutputDevice);
-              } catch (e) {
-                console.warn('⚠️ Failed to set sinkId on Verto audio:', e);
-              }
-            }
-
-            const tryPlay = () => audio.play().catch(() => {});
-            audio.addEventListener('canplay', tryPlay);
-            tryPlay();
-
-            const enableAudio = () => {
-              audio.play().catch(() => {});
-            };
-            document.addEventListener('click', enableAudio, { once: true });
-            document.addEventListener('touchstart', enableAudio, { once: true });
-          }
-        });
-      });
-    });
-
-    observer.observe(el, { childList: true, subtree: true });
-    return el;
-  };
-
-  // Create phone line when component mounts
+  // Listen for Verto events
   useEffect(() => {
-    createPhoneLine();
+    const handleClientReady = () => {
+      console.log('🚀 Client ready event - creating park call');
+      if (verto) {
+        const parkCall = call('park', {
+          caller_id_name: null,
+          caller_id_number: null
+        });
+        console.log('✅ Park call created:', parkCall);
+      }
+    };
+    
+    const handleParkReady = (e: CustomEvent) => {
+      const { apiCallId } = e.detail;
+      console.log('🅿️ Park call ready with API ID:', apiCallId);
+      parkCallIdRef.current = apiCallId;
+    };
+    
+    window.addEventListener('verto-client-ready', handleClientReady as EventListener);
+    window.addEventListener('verto-park-ready', handleParkReady as EventListener);
+    
+    return () => {
+      window.removeEventListener('verto-client-ready', handleClientReady as EventListener);
+      window.removeEventListener('verto-park-ready', handleParkReady as EventListener);
+    };
+  }, [verto, call]);
+
+  // Login to SaleSys EasyTelecom when component mounts
+  useEffect(() => {
+    loginToEasyTelecom();
   }, []);
 
-  const createPhoneLine = async () => {
+  const loginToEasyTelecom = async () => {
     try {
       setIsLoading(true);
-      console.log('Creating phone line...');
+      console.log('Logging in to SaleSys EasyTelecom...');
       
-      const { data, error } = await supabase.functions.invoke('telnect-create-phone', {
+      const { data, error } = await supabase.functions.invoke('salesys-proxy', {
         body: {
-          allow_features: ['inbound', 'outbound', 'websocket'],
-          type: 'dynamic',
-          max_expire: 86400
+          url: 'https://app.salesys.se/api/dial/easytelecom-v1/login',
+          method: 'POST'
         }
       });
 
       if (error) {
-        console.error('Error creating phone line:', error);
+        console.error('Error logging in:', error);
         toast({
           title: "Error",
-          description: "Failed to create phone line",
+          description: "Failed to login to phone system",
           variant: "destructive",
         });
         return;
       }
 
-      console.log('Phone line created:', data);
-      setPhoneLineData(data);
+      console.log('Login successful:', data);
+      setLoginData(data);
       
       // Connect to Verto WebRTC
       await connectToVerto(data);
       
     } catch (error) {
-      console.error('Error creating phone line:', error);
+      console.error('Error logging in:', error);
       toast({
         title: "Error",
-        description: "Failed to create phone line",
+        description: "Failed to login to phone system",
         variant: "destructive",
       });
     } finally {
@@ -141,26 +113,34 @@ export const PhoneInterface: React.FC = () => {
     }
   };
 
-  const connectToVerto = async (phoneData: PhoneLineData) => {
+  const connectToVerto = async (data: SalesysLoginData) => {
     try {
       console.log('Connecting to Verto...');
-
-      // Ensure tag container exists for Verto to attach its media elements
-      ensureTagContainer('phone-interface');
+      
+      // Ensure audio element exists
+      let audioEl = document.getElementById('audio-stream') as HTMLAudioElement;
+      if (!audioEl) {
+        audioEl = document.createElement('audio');
+        audioEl.id = 'audio-stream';
+        audioEl.autoplay = true;
+        audioEl.hidden = true;
+        document.body.appendChild(audioEl);
+        console.log('✅ Created audio-stream element');
+      }
       
       await connect({
-        wsURL: phoneData.websocket_url,
-        login: phoneData.username,
-        passwd: phoneData.password,
+        wsURL: data.url,
+        login: `${data.username}@${data.domain}`,
+        passwd: data.password,
         login_token: '',
         userVariables: {},
-        ringFile: 'https://s3.amazonaws.com/evolux-files/ringtone/ringtone_us_uk.mp3',
+        ringFile: '',
         loginParams: {},
-        tag: 'phone-interface'
+        tag: 'audio-stream'
       });
 
       setIsConnected(true);
-      console.log('Connected to Verto');
+      console.log('✅ Connected to Verto');
       
     } catch (error) {
       console.error('Error connecting to Verto:', error);
@@ -173,10 +153,19 @@ export const PhoneInterface: React.FC = () => {
   };
 
   const handleCall = async () => {
-    if (!phoneNumber.trim() || !phoneLineData) {
+    if (!phoneNumber.trim() || !loginData) {
       toast({
         title: "Error",
-        description: "Please enter a phone number and ensure WebRTC is connected",
+        description: "Please enter a phone number and ensure system is connected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!parkCallIdRef.current) {
+      toast({
+        title: "Error",
+        description: "Park call not ready. Please wait a moment and try again.",
         variant: "destructive",
       });
       return;
@@ -184,149 +173,39 @@ export const PhoneInterface: React.FC = () => {
 
     try {
       setIsLoading(true);
-      setCallState({ status: 'connecting' });
+      setCallState({ status: 'calling', phoneNumber });
       
-      console.log('🎯 Starting call process...');
+      console.log('📞 Making call via SaleSys API...');
+      console.log('Using park call ID:', parkCallIdRef.current);
+      console.log('Calling:', phoneNumber, 'from:', loginData.username);
       
-      // STEP 1: Ensure audio elements exist BEFORE any WebRTC operations
-      console.log('🔧 Ensuring audio elements exist BEFORE Verto operations...');
-      
-      const createAudioElements = () => {
-        // Remove existing elements to avoid conflicts
-        const existingContainer = document.getElementById('verto-audio-container');
-        if (existingContainer) {
-          existingContainer.remove();
-        }
-
-        // Create container
-        const container = document.createElement('div');
-        container.id = 'verto-audio-container';
-        container.style.position = 'absolute';
-        container.style.left = '-9999px';
-        container.style.width = '1px';
-        container.style.height = '1px';
-
-        // Create main audio element for remote stream - MUST exist before Verto call
-        const mainAudio = document.createElement('audio');
-        mainAudio.id = 'main_audio';
-        mainAudio.autoplay = true;
-        (mainAudio as any).playsInline = true;
-        mainAudio.controls = false;
-        mainAudio.volume = 1.0;
-        
-        // Monitor srcObject changes for debugging
-        Object.defineProperty(mainAudio, 'srcObject', {
-          get() { return this._srcObject; },
-          set(value) {
-            console.log('🎯 Setting srcObject on main_audio:', value);
-            this._srcObject = value;
-            if (value) {
-              console.log('🎵 Stream tracks:', value.getTracks().map(t => `${t.kind}:${t.enabled}`));
-              
-              // Try to play immediately
-              this.play().then(() => {
-                console.log('✅ Auto-play successful');
-              }).catch(err => {
-                console.error('❌ Auto-play blocked:', err);
-                console.log('💡 Click anywhere to enable audio');
-                
-                // Add click handler for user interaction
-                const enableAudio = () => {
-                  this.play().then(() => {
-                    console.log('✅ Audio enabled after user interaction');
-                    document.removeEventListener('click', enableAudio);
-                  }).catch(e => console.error('❌ Manual play failed:', e));
-                };
-                document.addEventListener('click', enableAudio, { once: true });
-              });
-            }
-          }
-        });
-        
-        // Create audio element for local stream
-        const audioElement = document.createElement('audio');
-        audioElement.id = 'audio_element';
-        audioElement.autoplay = true;
-        (audioElement as any).playsInline = true;
-        audioElement.controls = false;
-        audioElement.muted = true;
-
-        container.appendChild(mainAudio);
-        container.appendChild(audioElement);
-        document.body.appendChild(container);
-
-        console.log('✅ Audio elements created and ready:', {
-          mainAudio: document.getElementById('main_audio'),
-          audioElement: document.getElementById('audio_element')
-        });
-
-        return { mainAudio, audioElement };
-      };
-
-      // Create audio elements first
-      const audioElements = createAudioElements();
-      
-      // STEP 2: Set audio output device if selected
-      if (selectedOutputDevice && 'setSinkId' in audioElements.mainAudio) {
-        try {
-          await (audioElements.mainAudio as any).setSinkId(selectedOutputDevice);
-          console.log('✅ Audio output device set:', selectedOutputDevice);
-        } catch (audioError) {
-          console.error('❌ Failed to set audio device:', audioError);
-        }
-      }
-
-      // STEP 3: Create WebRTC session via Verto
-      console.log('📞 Creating Verto WebRTC call...');
-
-      // Ensure call tag exists for this specific call
-      ensureTagContainer('verto-webrtc-call');
-
-      const vertoCall = call('park', {
-        caller_id_name: 'WebRTC User',
-        caller_id_number: phoneLineData?.username || '',
-        tag: 'verto-webrtc-call'
-      });
-
-      console.log('📞 Verto call created:', vertoCall);
-      
-      // Get the callID from the Verto dialog object
-      const vertoCallId = vertoCall?.callID;
-      if (!vertoCallId) {
-        throw new Error('Failed to get Verto call ID - WebRTC session creation failed');
-      }
-      
-      console.log('🆔 Verto call ID extracted:', vertoCallId);
-
-      // STEP 4: Create outbound call via Telnect API
-      console.log('📞 Creating outbound call via Telnect...');
-      const { data: outboundCallData, error: outboundError } = await supabase.functions.invoke('telnect-create-call', {
+      const { data, error } = await supabase.functions.invoke('salesys-proxy', {
         body: {
-          caller: phoneLineData?.username || '',
-          number: phoneNumber,
-          notifyUrl: `${window.location.origin}/api/call-events`
+          url: 'https://app.salesys.se/api/dial/easytelecom-v1/call',
+          method: 'POST',
+          data: {
+            destinationPhoneNumber: phoneNumber,
+            callerPhoneNumber: loginData.username,
+            easyTelecomUserCallId: parkCallIdRef.current
+          }
         }
       });
 
-      if (outboundError) {
-        console.error('❌ Error creating outbound call:', outboundError);
-        throw new Error('Failed to create outbound call');
+      if (error) {
+        console.error('❌ Error creating call:', error);
+        throw new Error('Failed to create call');
       }
 
-      console.log('✅ Outbound call created:', outboundCallData);
-      const outboundCallId = outboundCallData.data?.id || outboundCallData.id;
-
-      // Update call state with both call IDs and store verto call reference
-      setCallState({
-        status: 'calling',
-        vertoCallId: vertoCallId,
-        outboundCallId: outboundCallId,
-        phoneNumber: phoneNumber,
-        vertoCallRef: vertoCall
-      });
-
-      // STEP 5: Start polling for call status - bridging will happen when call is answered
-      startCallStatusPolling(outboundCallId, vertoCall);
+      console.log('✅ Call created successfully:', data);
+      
+      // Update state to answered after a moment
+      setTimeout(() => {
+        setCallState(prev => ({ 
+          ...prev, 
+          status: 'answered',
+          startTime: new Date()
+        }));
+      }, 2000);
 
       toast({
         title: "Success",
@@ -346,148 +225,16 @@ export const PhoneInterface: React.FC = () => {
     }
   };
 
-  const startCallStatusPolling = (callId: string, vertoCall: any) => {
-    // Clear any existing polling
-    if (statusPollingRef.current) {
-      clearInterval(statusPollingRef.current);
-    }
-
-    statusPollingRef.current = setInterval(async () => {
-      try {
-        const { data: callInfo, error } = await supabase.functions.invoke('telnect-get-call', {
-          body: { callId: callId }
-        });
-
-        if (error) {
-          console.error('Error polling call status:', error);
-          return;
-        }
-
-        console.log('Call status:', callInfo.status);
-        
-        if (callInfo.status === 'answered') {
-          console.log('✅ Call answered, initiating bridge...');
-          
-          try {
-            // Add a small delay to ensure both calls are ready for bridging
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            console.log('🌉 Bridging calls - Outbound ID:', callId, 'Verto ID:', vertoCall?.callID);
-            
-            // Bridge the calls using the verto call ID and outbound call ID
-            const { data: bridgeResult, error: bridgeError } = await supabase.functions.invoke('telnect-call-action', {
-              body: {
-                callId: callId, // The outbound call that will be bridged 
-                action: 'bridge',
-                bridgeCallId: vertoCall?.callID // Use the verto call ID directly
-              }
-            });
-            
-            if (bridgeError) {
-              console.error('❌ Error bridging calls:', bridgeError);
-              
-              // Retry bridging once after a longer delay
-              console.log('🔄 Retrying bridge after delay...');
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              const { data: retryResult, error: retryError } = await supabase.functions.invoke('telnect-call-action', {
-                body: {
-                  callId: callId,
-                  action: 'bridge',
-                  bridgeCallId: vertoCall?.callID
-                }
-              });
-              
-              if (retryError) {
-                console.error('❌ Retry bridge also failed:', retryError);
-                toast({
-                  title: "Bridge Warning",
-                  description: "Calls connected but bridging had issues",
-                  variant: "destructive",
-                });
-              } else {
-                console.log('✅ Bridge retry successful:', retryResult);
-              }
-            } else {
-              console.log('✅ Calls bridged successfully on first attempt:', bridgeResult);
-            }
-          } catch (bridgeError) {
-            console.error('❌ Failed to bridge calls:', bridgeError);
-            toast({
-              title: "Bridge Error",
-              description: "Calls may not be properly connected",
-              variant: "destructive",
-            });
-          }
-
-          // Update call state to answered regardless of bridge status
-          setCallState(prev => ({ 
-            ...prev, 
-            status: 'answered',
-            startTime: new Date()
-          }));
-          stopCallStatusPolling();
-        } else if (['hangup', 'failed', 'completed'].includes(callInfo.status)) {
-          console.log('📞 Call ended with status:', callInfo.status);
-          setCallState(prev => ({ 
-            ...prev, 
-            status: 'other_hangup'
-          }));
-          stopCallStatusPolling();
-        }
-      } catch (error) {
-        console.error('Error polling call status:', error);
-      }
-    }, 2000); // Poll every 2 seconds
-  };
-
-  const stopCallStatusPolling = () => {
-    if (statusPollingRef.current) {
-      clearInterval(statusPollingRef.current);
-      statusPollingRef.current = null;
-    }
-  };
 
   const handleHangup = async () => {
     try {
-      console.log('📞 Initiating hangup process...');
+      console.log('📞 Hanging up call...');
       
-      // First hangup the WebRTC call via Verto
-      if (callState.vertoCallId) {
-        console.log('📞 Hanging up Verto call:', callState.vertoCallId);
-        await hangup(callState.vertoCallId);
-      }
+      hangup();
       
-      // Then hangup the Telnect call
-      if (callState.outboundCallId) {
-        console.log('📞 Hanging up Telnect call:', callState.outboundCallId);
-        const { data, error } = await supabase.functions.invoke('telnect-call-action', {
-          body: {
-            callId: callState.outboundCallId,
-            action: 'hangup'
-          }
-        });
-        
-        if (error) {
-          console.error('❌ Error hanging up Telnect call:', error);
-        } else {
-          console.log('✅ Telnect call hangup successful:', data);
-        }
-      }
-
-      // Update UI immediately
       setCallState({ status: 'hangup' });
-      stopCallStatusPolling();
       
-      // Clean up audio elements after a short delay
       setTimeout(() => {
-        const container = document.getElementById('verto-audio-container');
-        if (container) {
-          container.remove();
-          console.log('🧹 Audio elements cleaned up after hangup');
-        }
-        
-        // Reset to idle after showing hangup status
         setCallState({ status: 'idle' });
       }, 2000);
       
@@ -500,7 +247,6 @@ export const PhoneInterface: React.FC = () => {
       
       // Force cleanup even if there was an error
       setCallState({ status: 'idle' });
-      stopCallStatusPolling();
       
       toast({
         title: "Call ended",
@@ -514,9 +260,8 @@ export const PhoneInterface: React.FC = () => {
     try {
       await disconnect();
       setIsConnected(false);
-      setPhoneLineData(null);
+      setLoginData(null);
       setCallState({ status: 'idle' });
-      stopCallStatusPolling();
       
       toast({
         title: "Disconnected",
@@ -530,7 +275,6 @@ export const PhoneInterface: React.FC = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopCallStatusPolling();
       if (isConnected) {
         disconnect();
       }
@@ -541,13 +285,12 @@ export const PhoneInterface: React.FC = () => {
   useEffect(() => {
     const handleVertoHangup = (event: CustomEvent) => {
       console.log('🎯 Received Verto hangup event:', event.detail);
-      const { callID, dialog } = event.detail;
+      const { callID } = event.detail;
       
       // Update call state to reflect hangup
       setCallState(prev => {
         if (prev.vertoCallId === callID) {
           console.log('📞 Updating call state to hangup due to Verto event');
-          stopCallStatusPolling();
           return { status: 'other_hangup' };
         }
         return prev;
@@ -562,7 +305,6 @@ export const PhoneInterface: React.FC = () => {
       setCallState(prev => {
         if (prev.vertoCallId === callID) {
           console.log('👋 Updating call state to hangup due to bye event');
-          stopCallStatusPolling();
           return { status: 'other_hangup' };
         }
         return prev;
