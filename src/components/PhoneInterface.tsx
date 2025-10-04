@@ -78,10 +78,19 @@ export const PhoneInterface: React.FC = () => {
       setIsLoading(true);
       console.log('Logging in to SaleSys EasyTelecom...');
       
+      // Get bearer token from localStorage
+      const bearerToken = localStorage.getItem('salesys_bearer_token');
+      if (!bearerToken) {
+        throw new Error('No authentication token found. Please log in first.');
+      }
+      
       const { data, error } = await supabase.functions.invoke('salesys-proxy', {
         body: {
           url: 'https://app.salesys.se/api/dial/easytelecom-v1/login',
-          method: 'POST'
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${bearerToken}`
+          }
         }
       });
 
