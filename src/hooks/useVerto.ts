@@ -238,36 +238,52 @@ export function useVerto() {
           setIsConnected(false);
         },
         onDialogState: (dialog: any) => {
-          console.log('🎯 Verto dialog state change:', dialog.state, 'CallID:', dialog.callID);
+          console.log('🎯 Verto dialog state change:', {
+            state: dialog.state,
+            stateName: dialog.state?.name,
+            callID: dialog.callID,
+            destination: dialog.params?.destination_number,
+            variables: dialog.params?.variables
+          });
           
-          // Check for verto_svar_api_callid in params
-          if (dialog.params?.variables?.verto_svar_api_callid) {
-            const apiCallId = dialog.params.variables.verto_svar_api_callid;
-            console.log('🆔 Got verto_svar_api_callid from dialog:', apiCallId);
-            
-            // Store on dialog and verto instance
-            dialog.vertoApiCallId = apiCallId;
-            if (vertoRef.current) {
-              vertoRef.current.parkCallId = apiCallId;
-              vertoRef.current.parkDialog = dialog;
+          // Check if state is 'active' for park call and extract the API call ID
+          const stateName = dialog.state?.name || dialog.state;
+          const VertoConstructor = (window as any).jQuery?.verto || (window as any).$?.verto;
+          const isActive = stateName === 'active' || 
+                          (VertoConstructor?.enum?.state && dialog.state === VertoConstructor.enum.state.active);
+          
+          if (isActive && dialog.params?.destination_number === 'park') {
+            const apiCallId = dialog.params?.variables?.verto_svar_api_callid;
+            if (apiCallId) {
+              console.log('🅿️ Park call is ACTIVE with API ID:', apiCallId);
+              
+              // Store on verto instance
+              if (vertoRef.current) {
+                vertoRef.current.parkCallId = apiCallId;
+                vertoRef.current.parkDialog = dialog;
+              }
+              
+              // Dispatch event with the API call ID
+              window.dispatchEvent(new CustomEvent('verto-park-ready', { 
+                detail: { apiCallId, dialog } 
+              }));
             }
-            
-            // Dispatch event with the API call ID
-            window.dispatchEvent(new CustomEvent('verto-park-ready', { 
-              detail: { apiCallId, dialog } 
-            }));
           }
           
           // Handle dialog state changes
-          if (dialog.state === 'active') {
+          if (isActive) {
             console.log('✅ Call is active');
             ensureAudioElementsExist();
-          } else if (dialog.state === 'hangup') {
+          }
+          
+          if (stateName === 'hangup') {
             console.log('📞 Call hangup detected');
             window.dispatchEvent(new CustomEvent('verto-hangup', { 
               detail: { callID: dialog.callID, dialog } 
             }));
-          } else if (dialog.state === 'destroy') {
+          }
+          
+          if (stateName === 'destroy') {
             console.log('💀 Call destroyed');
           }
         },
