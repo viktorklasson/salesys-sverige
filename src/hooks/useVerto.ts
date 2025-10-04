@@ -120,7 +120,7 @@ export function useVerto() {
           }
 
           const jqueryScript = document.createElement('script');
-          jqueryScript.src = '/jquery-2.1.1.min.js';
+          jqueryScript.src = 'https://app.salesys.se/libs/easytelecom/jquery-2.1.1.min.js';
           jqueryScript.onload = () => {
             console.log('jQuery loaded successfully');
             jQueryResolve();
@@ -141,7 +141,7 @@ export function useVerto() {
           }
 
           const jsonScript = document.createElement('script');
-          jsonScript.src = '/jquery.json-2.4.min.js';
+          jsonScript.src = 'https://app.salesys.se/libs/easytelecom/jquery.json-2.4.min.js';
           jsonScript.onload = () => {
             console.log('jQuery JSON plugin loaded successfully');
             jsonResolve();
@@ -162,7 +162,7 @@ export function useVerto() {
           }
 
           const mediaScript = document.createElement('script');
-          mediaScript.src = '/media-device-id.min.js';
+          mediaScript.src = 'https://app.salesys.se/libs/easytelecom/media-device-id.min.js';
           mediaScript.onload = () => {
             console.log('Media Device ID loaded successfully');
             mediaResolve();
@@ -183,7 +183,7 @@ export function useVerto() {
           }
 
           const vertoScript = document.createElement('script');
-          vertoScript.src = '/verto.min.js';
+          vertoScript.src = 'https://app.salesys.se/libs/easytelecom/verto-min-0.0.2.js';
           vertoScript.onload = () => {
             console.log('Verto loaded successfully');
             isLoadedRef.current = true;
